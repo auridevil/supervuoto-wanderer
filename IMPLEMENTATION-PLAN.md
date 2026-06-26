@@ -1,5 +1,11 @@
 # Implementation Plan — supervuoto-wanderer
 
+> **Status: SHIPPED.** WP1–WP10 are all implemented and live on GitHub Pages
+> (WP11 SoundCloud was skipped by decision). Post-ship tweaks: terrain rebuild
+> reverted to a cheap synchronous pass (fixed a walking glitch), Shift changed
+> from sprint to a slow stroll, and a desktop-only notice added for touch devices.
+> This doc is kept for the record.
+
 Scope agreed with the user:
 - **Gameplay:** wayfinding + height-aware jumps
 - **Audio:** keep generative; add the ability to inject a SoundCloud URL
