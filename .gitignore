@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+
+# ruflo / claude-flow tooling (local dev only — keep the public repo game-only)
+.claude-flow/
+.claude/
+.swarm/
+.mcp.json
+CLAUDE.md
+*.db
+*.log
