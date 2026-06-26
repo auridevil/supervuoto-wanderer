@@ -143,6 +143,23 @@ export class Wizard {
     this.aura.visible = false;
     this.group.add(this.aura);
 
+    // Contact shadow blob under the sage (kept on the ground during bob/jump).
+    const bc = document.createElement("canvas");
+    bc.width = bc.height = 64;
+    const bx = bc.getContext("2d");
+    const bgrad = bx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    bgrad.addColorStop(0, "rgba(0,0,0,0.8)");
+    bgrad.addColorStop(0.55, "rgba(0,0,0,0.35)");
+    bgrad.addColorStop(1, "rgba(0,0,0,0)");
+    bx.fillStyle = bgrad; bx.fillRect(0, 0, 64, 64);
+    this.blobTex = new THREE.CanvasTexture(bc);
+    this.blobMat = new THREE.MeshBasicMaterial({ map: this.blobTex, transparent: true, opacity: 0.55, depthWrite: false });
+    const blobGeo = new THREE.CircleGeometry(0.95, 24);
+    blobGeo.rotateX(-Math.PI / 2);
+    this.blob = new THREE.Mesh(blobGeo, this.blobMat);
+    this.blob.renderOrder = 1;
+    this.group.add(this.blob);
+
     // ---- walking staff with a hanging lantern (reactive) ----
     this.staff = new THREE.Group();
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 2.05, 8), wood);
@@ -191,6 +208,12 @@ export class Wizard {
     const bob = Math.abs(sw) * 0.08 * walkAmt + idle;
     this.group.position.set(pos.x, groundY + bob + 0.05 + jumpOffset, pos.z);
     if (jumpOffset > 0.1) { this.legL.rotation.x = -0.5; this.legR.rotation.x = -0.5; }
+
+    // Keep the contact shadow on the ground; soften/grow it as the sage rises.
+    const lift = bob + jumpOffset;
+    this.blob.position.y = (0.06 - lift) / 0.92; // counter group bob/jump (group is scaled 0.92)
+    this.blob.scale.setScalar(1 + jumpOffset * 0.12);   // grows as he rises
+    this.blobMat.opacity = 0.55 / (1 + jumpOffset * 0.5); // and fades
 
     // Music: halo shimmer + lantern glow; enlightenment when on the waveform.
     // Reduce-motion: scale the beat-driven strobe terms + the white pickup flash

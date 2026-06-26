@@ -569,6 +569,33 @@ export class PastelWorld {
   }
 
   // Trees, mushrooms, crystals and floating magical orbs that wrap around you.
+  // A cheap soft contact-shadow decal (dark radial circle) laid flat on the
+  // ground, parented under a prop so it follows it. Grounds things without the
+  // cost of real shadow maps.
+  _makeBlob(r = 1) {
+    if (!this._blobMat) {
+      const s = 64, c = document.createElement("canvas");
+      c.width = c.height = s;
+      const ctx = c.getContext("2d");
+      const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      g.addColorStop(0, "rgba(0,0,0,0.85)");
+      g.addColorStop(0.55, "rgba(0,0,0,0.4)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+      this._blobTex = new THREE.CanvasTexture(c);
+      this._blobMat = new THREE.MeshBasicMaterial({ map: this._blobTex, transparent: true, opacity: 0.5, depthWrite: false });
+      this._blobGeo = new THREE.CircleGeometry(1, 24);
+      this._blobGeo.rotateX(-Math.PI / 2);
+      this._track(this._blobGeo, this._blobMat);
+      this._track(null, this._blobTex);
+    }
+    const m = new THREE.Mesh(this._blobGeo, this._blobMat);
+    m.scale.set(r, 1, r);
+    m.position.y = 0.05;
+    m.renderOrder = 1;
+    return m;
+  }
+
   _buildScatter(scene) {
     this.scatter = [];
     this.scatterGroup = new THREE.Group();
@@ -593,6 +620,10 @@ export class PastelWorld {
 
     const add = (obj, item) => {
       this.scatterGroup.add(obj);
+      // Ground-anchored props get a contact shadow; floating orbs don't.
+      if (item.kind !== "orb") {
+        obj.add(this._makeBlob(item.kind === "crystal" ? 0.6 : item.kind === "veg" ? 0.9 : 1.1));
+      }
       item.obj = obj; item.R = R; item.groundY = 0; item.phase = rand(0, Math.PI * 2);
       this.scatter.push(item);
     };
@@ -719,6 +750,7 @@ export class PastelWorld {
       roof.position.y = 3.25; roof.rotation.y = Math.PI / 4; this._disp.push(roof.geometry); g.add(roof);
       const finial = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), gold);
       finial.position.y = 4.05; this._disp.push(finial.geometry); g.add(finial);
+      g.add(this._makeBlob(2.0));
       g.rotation.y = Math.random() * Math.PI;
       place(g); addItem(g);
     }
@@ -732,6 +764,7 @@ export class PastelWorld {
       ring.position.y = h; ring.rotation.x = Math.PI / 2; this._disp.push(ring.geometry); g.add(ring);
       const cap = new THREE.Mesh(new THREE.ConeGeometry(1.3, 1.6, 8), roofM);
       cap.position.y = h + 0.8; this._disp.push(cap.geometry); g.add(cap);
+      g.add(this._makeBlob(1.4));
       place(g); addItem(g);
     }
 

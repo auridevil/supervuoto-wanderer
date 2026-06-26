@@ -17,8 +17,9 @@ LOD, frustum culling, wrap-around recycling).
 - [x] **ACES tonemapping + exposure** — `renderer.toneMapping = ACESFilmicToneMapping`
   with an **Exposure** slider in Settings (persisted). Filmic, richer color instead
   of flat sRGB; pairs with bloom. **SHIPPED.**
-- [ ] **Contact / blob shadows** — cheap soft shadow under the sage, trees,
-  structures so nothing floats. (Or one shadow-mapped moonlight if budget allows.)
+- [x] **Contact / blob shadows** — cheap soft radial-decal shadows under the sage,
+  trees/mushrooms/crystals, biome props, shrines & towers. The sage's stays
+  pinned to the ground (grows/fades) through bob & jump. **SHIPPED.**
 - [ ] **SSAO** — ambient occlusion in valleys/crevices for depth.
 
 ## Phase 2 — Density via instancing (where sprites help)
