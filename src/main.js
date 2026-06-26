@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { AudioEngine } from "./audio.js";
 import { WalkControls } from "./controls.js";
 import { PastelWorld } from "./worlds/pastel.js";
@@ -26,6 +27,10 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 // ---- LOFI post-processing ----
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+// Bloom — soft glow on bright/emissive pixels (lanterns, rings, crystals,
+// aurora, the waveform ribbon, the moon). Runs before the LOFI stylization.
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.5, 0.6);
+composer.addPass(bloomPass);
 const lofiPass = new ShaderPass(LofiShader);
 composer.addPass(lofiPass);
 function syncResolution() {
@@ -98,6 +103,8 @@ const settings = {
   pixelSize: 2,
   levels: 26,
   grain: 0.55,
+  bloomOn: true,
+  bloomStrength: 0.8,
 };
 
 function loadSettings() {
@@ -138,6 +145,10 @@ const setLevels = document.getElementById("setLevels");
 const levelsVal = document.getElementById("levelsVal");
 const setGrain = document.getElementById("setGrain");
 const grainVal = document.getElementById("grainVal");
+const setBloomOn = document.getElementById("setBloomOn");
+const bloomGroup = document.getElementById("bloom-group");
+const setBloomStrength = document.getElementById("setBloomStrength");
+const bloomVal = document.getElementById("bloomVal");
 
 // ---- appliers (each pushes one setting into the live engine) ----
 let waveWidth = settings.waveWidth; // kept as a top-level binding for the [ ] keys
@@ -181,6 +192,15 @@ function applyLofi() {
   if (lofiGroup) lofiGroup.classList.toggle("off", !settings.lofiOn);
 }
 
+function applyBloom() {
+  bloomPass.enabled = settings.bloomOn;
+  bloomPass.strength = settings.bloomStrength;
+  if (setBloomOn) setBloomOn.checked = settings.bloomOn;
+  if (setBloomStrength) setBloomStrength.value = settings.bloomStrength;
+  if (bloomVal) bloomVal.textContent = settings.bloomStrength.toFixed(2);
+  if (bloomGroup) bloomGroup.classList.toggle("off", !settings.bloomOn);
+}
+
 // ---- wire DOM -> settings ----
 if (waveWidthInput) waveWidthInput.addEventListener("input", () => setWaveWidth(parseFloat(waveWidthInput.value)));
 if (setReduceMotion)
@@ -206,6 +226,15 @@ function onLofiInput() {
 [setLofiOn, setPixel, setLevels, setGrain].forEach((el) => {
   if (el) el.addEventListener("input", onLofiInput);
 });
+function onBloomInput() {
+  settings.bloomOn = setBloomOn ? setBloomOn.checked : settings.bloomOn;
+  if (setBloomStrength) settings.bloomStrength = parseFloat(setBloomStrength.value);
+  applyBloom();
+  saveSettings();
+}
+[setBloomOn, setBloomStrength].forEach((el) => {
+  if (el) el.addEventListener("input", onBloomInput);
+});
 
 // Collapsible settings section (default collapsed to stay compact).
 const settingsHead = document.getElementById("settings-head");
@@ -219,6 +248,7 @@ if (settingsHead) {
 setWaveWidth(settings.waveWidth);
 applyFov();
 applyLofi();
+applyBloom();
 applyReduceMotion();
 
 const worldNameEl = document.getElementById("worldName");
