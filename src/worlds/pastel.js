@@ -428,7 +428,7 @@ export class PastelWorld {
       wx[i] = x + ppx * off; wz[i] = cz + ppz * off;
     }
     const wpos = this.waveRibbon.geometry.attributes.position, wa = wpos.array;
-    const halfT = this.waveWidth + bands.level * 0.6 + beat * 0.4 * fm; // base from slider, pulses too
+    const halfT = this.waveWidth + bands.level * 0.15 + beat * 0.12 * fm; // slider dominates; subtle pulse
     const y = PATH_LEVEL + 0.22;
     for (let i = 0; i < N; i++) {
       const i0 = Math.max(0, i - 1), i1 = Math.min(N - 1, i + 1);

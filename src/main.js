@@ -97,7 +97,7 @@ const prefersReducedMotion =
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const settings = {
-  waveWidth: 0.5,
+  waveWidth: 0.12, // slim by default (lower bound)
   moveSpeed: 16, // default is fast/running; Shift strolls slowly
   exposure: 1.1,
   reduceMotion: prefersReducedMotion, // default ON if the OS asks for it
@@ -160,7 +160,7 @@ const exposureVal = document.getElementById("exposureVal");
 // ---- appliers (each pushes one setting into the live engine) ----
 let waveWidth = settings.waveWidth; // kept as a top-level binding for the [ ] keys
 function setWaveWidth(v) {
-  waveWidth = clamp(v, 0.1, 4);
+  waveWidth = clamp(v, 0.05, 4);
   settings.waveWidth = waveWidth;
   if (waveWidthInput) waveWidthInput.value = waveWidth;
   if (wwVal) wwVal.textContent = waveWidth.toFixed(1);
