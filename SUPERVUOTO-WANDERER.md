@@ -24,15 +24,19 @@ plays so the world still reacts.
 
 ## Controls
 
+**Desktop only** — keyboard + mouse-look + pointer-lock; touch devices get a
+notice on the start screen.
+
 | Input | Action |
 | --- | --- |
 | `W A S D` / arrows | Walk |
 | Mouse | Look |
 | `Space` | Jump |
-| `Shift` | Sprint |
+| `Shift` | Stroll (move slowly) |
 | `V` | Toggle third / first person (third is the default) |
 | `1` / `2` | Switch world (Moonlit Hills / Infinite Plane) |
 | `[` / `]` or slider | Waveform-ribbon width |
+| `P` | Photo mode (hide UI + capture PNG) |
 | `Esc` | Release the mouse (to use the slider) |
 
 ---

@@ -30,15 +30,21 @@ publishes to GitHub Pages on every push to `main`.
 `vite.config.js` uses `base: "./"` so the build works under the project subpath.
 Add your track as `public/music.mp3` (committed) to ship it with the site.
 
+> **Desktop only.** It needs a keyboard, mouse-look and pointer-lock, so it
+> doesn't work on phones/tablets (the start screen shows a notice on touch devices).
+
 ## Controls
 
 | Key | Action |
 | --- | --- |
 | `W A S D` / arrows | Walk |
 | Mouse | Look around |
-| `Shift` | Sprint |
-| `1` | Pastel Hills world |
-| `2` | Infinite Plane world |
+| `Space` | Jump |
+| `Shift` | Stroll (move slowly) |
+| `V` | Toggle third / first person (third is default) |
+| `1` / `2` | Switch world (Moonlit Hills / Infinite Plane) |
+| `[` / `]` or slider | Waveform-ribbon width |
+| `P` | Photo mode |
 | `Esc` | Release mouse |
 
 Press `1` / `2` anytime to switch worlds live.

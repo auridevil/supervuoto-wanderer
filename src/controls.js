@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-// Pointer-lock first-person wander controls: WASD/arrows + mouse-look + sprint.
+// Pointer-lock first-person wander controls: WASD/arrows + mouse-look + Shift-to-stroll.
 // The camera glides along the ground; the active world supplies the height.
 export class WalkControls {
   constructor(camera, domElement) {
@@ -9,7 +9,7 @@ export class WalkControls {
     this.enabled = false;
     this.eyeHeight = 1.7;
     this.speed = 9;
-    this.sprint = 2.2;
+    this.slow = 0.38;   // hold Shift to stroll slowly (multiplier on speed)
 
     this.yaw = 0;
     this.pitch = 0;
@@ -64,7 +64,7 @@ export class WalkControls {
                     (this.keys.has("KeyS") || this.keys.has("ArrowDown") ? 1 : 0);
     const strafe = (this.keys.has("KeyD") || this.keys.has("ArrowRight") ? 1 : 0) -
                    (this.keys.has("KeyA") || this.keys.has("ArrowLeft") ? 1 : 0);
-    const boost = this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? this.sprint : 1;
+    const boost = this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? this.slow : 1;
 
     // Move on the horizontal plane relative to where we're looking.
     // forwardVec = (-sin, cos); rightVec = forwardVec × up = (-cos, -sin).
