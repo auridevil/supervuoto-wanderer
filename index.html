@@ -77,6 +77,13 @@
         font-size: 0.7rem; margin-top: -0.4rem; margin-left: 0.42em;
       }
       #overlay p { color: var(--muted); max-width: 30rem; line-height: 1.7; font-weight: 300; }
+      #mobileNote {
+        display: none; max-width: 30rem; margin: 0.2rem auto 0;
+        padding: 0.75rem 1.1rem; border: 1px solid rgba(255,200,120,0.45);
+        border-radius: 12px; background: rgba(120,80,20,0.22); color: #ffe0b0;
+        font-size: 0.85rem; line-height: 1.55; letter-spacing: 0.02em;
+      }
+      #mobileNote.show { display: block; }
       .start-btn {
         margin-top: 0.5rem;
         padding: 0.9rem 2.6rem;
@@ -207,6 +214,7 @@
     <div id="overlay" class="ui">
       <h1>Supervuoto&nbsp;Wanderer</h1>
       <div class="tagline">an endless walk through sound</div>
+      <div id="mobileNote">📱 This is a <b>desktop</b> experience — it needs a <b>keyboard &amp; mouse</b> (WASD&nbsp;+&nbsp;mouse&#8209;look) and pointer&#8209;lock, which phones &amp; tablets don't support. Please open it on a computer to wander.</div>
       <p>A goalless wander through a moonlit world that breathes with the music. No objective. Just walk.</p>
       <div class="start-btn">Click to enter</div>
       <div class="file-row" onclick="event.stopPropagation()">
