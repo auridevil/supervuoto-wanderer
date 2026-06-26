@@ -238,6 +238,15 @@ const trackInput = document.getElementById("trackInput");
 let started = false;
 let pendingFile = null;
 
+// Touch devices have no keyboard / mouse-look / pointer-lock — warn up front.
+const isMobile = window.matchMedia("(pointer: coarse)").matches ||
+  /Android|iPhone|iPad|iPod|IEMobile|Mobile/i.test(navigator.userAgent);
+if (isMobile) {
+  document.getElementById("mobileNote")?.classList.add("show");
+  const btn = overlay.querySelector(".start-btn");
+  if (btn) btn.textContent = "Enter anyway";
+}
+
 trackInput.addEventListener("change", (e) => {
   pendingFile = e.target.files[0] || null;
 });
