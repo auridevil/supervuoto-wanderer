@@ -14,8 +14,9 @@ LOD, frustum culling, wrap-around recycling).
 - [x] **Bloom** — soft glow on emissive pixels (lanterns, rings, crystals, aurora,
   waveform, moon). `UnrealBloomPass` before the LOFI pass; toggle + strength in
   Settings, persisted. **SHIPPED.**
-- [ ] **ACES tonemapping + exposure** — `renderer.toneMapping = ACESFilmicToneMapping`;
-  filmic, richer color instead of flat sRGB. Pairs with bloom.
+- [x] **ACES tonemapping + exposure** — `renderer.toneMapping = ACESFilmicToneMapping`
+  with an **Exposure** slider in Settings (persisted). Filmic, richer color instead
+  of flat sRGB; pairs with bloom. **SHIPPED.**
 - [ ] **Contact / blob shadows** — cheap soft shadow under the sage, trees,
   structures so nothing floats. (Or one shadow-mapped moonlight if budget allows.)
 - [ ] **SSAO** — ambient occlusion in valleys/crevices for depth.

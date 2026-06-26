@@ -19,6 +19,7 @@ const app = document.getElementById("app");
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic color; exposure set via settings
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -97,6 +98,8 @@ const prefersReducedMotion =
 
 const settings = {
   waveWidth: 0.5,
+  moveSpeed: 16, // default is fast/running; Shift strolls slowly
+  exposure: 1.1,
   reduceMotion: prefersReducedMotion, // default ON if the OS asks for it
   fov: 70,
   lofiOn: true,
@@ -149,6 +152,10 @@ const setBloomOn = document.getElementById("setBloomOn");
 const bloomGroup = document.getElementById("bloom-group");
 const setBloomStrength = document.getElementById("setBloomStrength");
 const bloomVal = document.getElementById("bloomVal");
+const setSpeed = document.getElementById("setSpeed");
+const speedVal = document.getElementById("speedVal");
+const setExposure = document.getElementById("setExposure");
+const exposureVal = document.getElementById("exposureVal");
 
 // ---- appliers (each pushes one setting into the live engine) ----
 let waveWidth = settings.waveWidth; // kept as a top-level binding for the [ ] keys
@@ -173,6 +180,20 @@ function applyFov() {
   camera.updateProjectionMatrix();
   if (setFov) setFov.value = settings.fov;
   if (fovVal) fovVal.textContent = String(Math.round(settings.fov));
+}
+
+function applyMoveSpeed() {
+  settings.moveSpeed = clamp(settings.moveSpeed, 4, 30);
+  controls.speed = settings.moveSpeed; // Shift still applies the slow stroll multiplier
+  if (setSpeed) setSpeed.value = settings.moveSpeed;
+  if (speedVal) speedVal.textContent = String(Math.round(settings.moveSpeed));
+}
+
+function applyExposure() {
+  settings.exposure = clamp(settings.exposure, 0.5, 2);
+  renderer.toneMappingExposure = settings.exposure;
+  if (setExposure) setExposure.value = settings.exposure;
+  if (exposureVal) exposureVal.textContent = settings.exposure.toFixed(2);
 }
 
 function applyLofi() {
@@ -235,6 +256,18 @@ function onBloomInput() {
 [setBloomOn, setBloomStrength].forEach((el) => {
   if (el) el.addEventListener("input", onBloomInput);
 });
+if (setSpeed)
+  setSpeed.addEventListener("input", () => {
+    settings.moveSpeed = parseFloat(setSpeed.value);
+    applyMoveSpeed();
+    saveSettings();
+  });
+if (setExposure)
+  setExposure.addEventListener("input", () => {
+    settings.exposure = parseFloat(setExposure.value);
+    applyExposure();
+    saveSettings();
+  });
 
 // Collapsible settings section (default collapsed to stay compact).
 const settingsHead = document.getElementById("settings-head");
@@ -246,6 +279,8 @@ if (settingsHead) {
 // Push restored values into UI + engine. applyReduceMotion runs again after the
 // first world is created (setWorld) so the active world picks it up.
 setWaveWidth(settings.waveWidth);
+applyMoveSpeed();
+applyExposure();
 applyFov();
 applyLofi();
 applyBloom();
