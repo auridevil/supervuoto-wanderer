@@ -5,6 +5,8 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { AudioEngine } from "./audio.js";
 import { WalkControls } from "./controls.js";
+import { TouchControls } from "./touch-controls.js";
+import { IS_MOBILE, PERF } from "./perf.js";
 import { PastelWorld } from "./worlds/pastel.js";
 import { PlaneWorld } from "./worlds/plane.js";
 import { Wizard } from "./character.js";
@@ -17,7 +19,7 @@ const app = document.getElementById("app");
 // preserveDrawingBuffer lets photo mode read the composed canvas back reliably
 // (toBlob after a render won't return a cleared buffer).
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, PERF.maxPixelRatio));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic color; exposure set via settings
 app.appendChild(renderer.domElement);
@@ -109,6 +111,9 @@ const settings = {
   bloomOn: true,
   bloomStrength: 0.8,
 };
+// Mobile perf profile: bloom is the priciest pass, default it off on phones.
+// Saved settings (loadSettings below) still win if the user flipped it back on.
+if (IS_MOBILE) settings.bloomOn = false;
 
 function loadSettings() {
   try {
@@ -303,13 +308,27 @@ const trackInput = document.getElementById("trackInput");
 let started = false;
 let pendingFile = null;
 
-// Touch devices have no keyboard / mouse-look / pointer-lock — warn up front.
-const isMobile = window.matchMedia("(pointer: coarse)").matches ||
-  /Android|iPhone|iPad|iPod|IEMobile|Mobile/i.test(navigator.userAgent);
-if (isMobile) {
+// Touch devices: no pointer-lock; a virtual joystick + drag-to-look instead.
+if (IS_MOBILE) {
   document.getElementById("mobileNote")?.classList.add("show");
   const btn = overlay.querySelector(".start-btn");
-  if (btn) btn.textContent = "Enter anyway";
+  if (btn) btn.textContent = "Tap to enter";
+  document.body.classList.add("touch");
+  controls.touchMode = true;
+  new TouchControls(controls, {
+    layer: document.getElementById("touchLayer"),
+    joy: document.getElementById("joy"),
+    stick: document.getElementById("joyStick"),
+    jump: document.getElementById("tJump"),
+  });
+  // Wire the on-screen buttons to the same actions as the keyboard.
+  const tap = (id, fn) =>
+    document.getElementById(id)?.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+  tap("tView", toggleView);
+  tap("tWorld", () => setWorld(active === worlds.pastel ? "plane" : "pastel"));
+  tap("tPhoto", () => setPhotoMode(!photoMode));
+  // iOS suspends the AudioContext on interruptions; nudge it back on touch.
+  document.addEventListener("touchend", () => { if (started) audio.resume(); }, { passive: true });
 }
 
 trackInput.addEventListener("change", (e) => {
@@ -324,6 +343,10 @@ async function start() {
   panel.classList.remove("hidden");
   reticle.classList.remove("hidden");
   if (wayfind) wayfind.classList.remove("hidden");
+  if (IS_MOBILE) {
+    document.getElementById("touchLayer")?.classList.remove("hidden");
+    document.getElementById("touchButtons")?.classList.remove("hidden");
+  }
 
   await audio.resume();
   try {
@@ -382,16 +405,18 @@ function capturePhoto() {
 
 if (captureBtn) captureBtn.addEventListener("click", capturePhoto);
 
+function toggleView() {
+  controls.thirdPerson = !controls.thirdPerson;
+  wizard.group.visible = controls.thirdPerson;
+  flashWorldName(controls.thirdPerson ? "Third Person — the Traveler" : "First Person");
+}
+
 // ---- world switch keys ----
 window.addEventListener("keydown", (e) => {
   if (!started) return;
   if (e.code === "Digit1") setWorld("pastel");
   if (e.code === "Digit2") setWorld("plane");
-  if (e.code === "KeyV") {
-    controls.thirdPerson = !controls.thirdPerson;
-    wizard.group.visible = controls.thirdPerson;
-    flashWorldName(controls.thirdPerson ? "Third Person — the Traveler" : "First Person");
-  }
+  if (e.code === "KeyV") toggleView();
   if (e.code === "KeyP") setPhotoMode(!photoMode);
   if (e.code === "BracketLeft") setWaveWidth(waveWidth - 0.2);
   if (e.code === "BracketRight") setWaveWidth(waveWidth + 0.2);

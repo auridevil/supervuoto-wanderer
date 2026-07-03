@@ -23,6 +23,11 @@ export class WalkControls {
     this.thirdPerson = false;
     this.camDist = 7.5;
 
+    // Touch mode (mobile): no pointer-lock; TouchControls feeds touchMove
+    // (analog -1..1 forward/strafe) and writes yaw/pitch directly.
+    this.touchMode = false;
+    this.touchMove = { f: 0, s: 0 };
+
     // Jumping
     this.jumpOffset = 0;     // height above the ground baseline
     this.vy = 0;
@@ -35,7 +40,7 @@ export class WalkControls {
       this.keys.add(e.code);
       if (e.code === "Space") {
         e.preventDefault();
-        if (this.onGround) { this.vy = this.jumpSpeed; this.onGround = false; }
+        this.jump();
       }
     };
     this._onKeyUp = (e) => this.keys.delete(e.code);
@@ -44,11 +49,19 @@ export class WalkControls {
     document.addEventListener("keydown", this._onKeyDown);
     document.addEventListener("keyup", this._onKeyUp);
     document.addEventListener("pointerlockchange", () => {
+      if (this.touchMode) return;
       this.enabled = document.pointerLockElement === this.dom;
     });
   }
 
-  lock() { this.dom.requestPointerLock(); }
+  lock() {
+    if (this.touchMode) { this.enabled = true; return; }
+    this.dom.requestPointerLock();
+  }
+
+  jump() {
+    if (this.onGround) { this.vy = this.jumpSpeed; this.onGround = false; }
+  }
 
   _onMouseMove(e) {
     if (!this.enabled) return;
@@ -61,9 +74,11 @@ export class WalkControls {
 
   update(dt) {
     const forward = (this.keys.has("KeyW") || this.keys.has("ArrowUp") ? 1 : 0) -
-                    (this.keys.has("KeyS") || this.keys.has("ArrowDown") ? 1 : 0);
+                    (this.keys.has("KeyS") || this.keys.has("ArrowDown") ? 1 : 0) +
+                    this.touchMove.f;
     const strafe = (this.keys.has("KeyD") || this.keys.has("ArrowRight") ? 1 : 0) -
-                   (this.keys.has("KeyA") || this.keys.has("ArrowLeft") ? 1 : 0);
+                   (this.keys.has("KeyA") || this.keys.has("ArrowLeft") ? 1 : 0) +
+                   this.touchMove.s;
     const boost = this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? this.slow : 1;
 
     // Move on the horizontal plane relative to where we're looking.
@@ -74,7 +89,7 @@ export class WalkControls {
       0,
       cos * forward - sin * strafe
     );
-    if (dir.lengthSq() > 0) dir.normalize();
+    if (dir.lengthSq() > 1) dir.normalize(); // keep sub-unit joystick tilts analog
 
     const target = dir.multiplyScalar(this.speed * boost);
     // Smooth acceleration / damping for a floaty wander feel.

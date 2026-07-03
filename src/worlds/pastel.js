@@ -1,9 +1,12 @@
 import * as THREE from "three";
 import { fbm } from "../noise.js";
 import { makeDesertKit, buildCactus, buildBones, makeSnowKit, buildPine, buildSnowBoulder } from "../props.js";
+import { PERF } from "../perf.js";
 
 const SIZE = 320;
-const SEG = 140;
+const SEG = PERF.terrainSeg;
+// Scale a prop count by the device profile (never below 1).
+const nProps = (n) => Math.max(1, Math.round(n * PERF.scatter));
 const CELL = SIZE / SEG;
 const FREQ = 0.013;
 const HEIGHT = 18;
@@ -551,7 +554,7 @@ export class PastelWorld {
   }
 
   _buildParticles(scene) {
-    const N = 1600;
+    const N = PERF.particles;
     const pos = new Float32Array(N * 3);
     this.spread = 170;
     for (let i = 0; i < N; i++) {
@@ -629,7 +632,7 @@ export class PastelWorld {
     };
 
     // Trees
-    for (let i = 0; i < 34; i++) {
+    for (let i = 0; i < nProps(34); i++) {
       const g = new THREE.Group();
       const trunk = new THREE.Mesh(trunkGeo, trunkMat); trunk.position.y = 0.7; g.add(trunk);
       const fmat = new THREE.MeshStandardMaterial({ color: PASTEL_FOLIAGE[i % PASTEL_FOLIAGE.length], roughness: 1, flatShading: true });
@@ -640,7 +643,7 @@ export class PastelWorld {
       place(g); add(g, { kind: "veg" });
     }
     // Mushrooms
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < nProps(18); i++) {
       const g = new THREE.Group();
       const stem = new THREE.Mesh(stemGeo, stemMat); stem.position.y = 0.3; g.add(stem);
       const cmat = new THREE.MeshStandardMaterial({ color: i % 2 ? "#b5704f" : "#caa15a", roughness: 0.9, flatShading: true });
@@ -650,7 +653,7 @@ export class PastelWorld {
       place(g); add(g, { kind: "veg" });
     }
     // Crystals (reactive emissive — tight teal palette)
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < nProps(16); i++) {
       const hue = rand(0.47, 0.57);
       const m = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, 0.6, 0.7), emissive: new THREE.Color().setHSL(hue, 0.7, 0.5), emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.2, flatShading: true });
       this._disp.push(m);
@@ -670,14 +673,14 @@ export class PastelWorld {
     // Desert props (cacti, bleached bones / dead shrubs) — visible only deep in
     // the desert biome; hidden elsewhere via the wrap/visibility logic.
     const desertKit = makeDesertKit((g, m) => this._track(g, m));
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < nProps(14); i++) {
       const g = Math.random() < 0.55 ? buildCactus(desertKit) : buildBones(desertKit);
       place(g); add(g, { kind: "desert" });
     }
     // Snow props (dark snow-capped pines, snowy boulders) — visible only deep in
     // the snow biome.
     const snowKit = makeSnowKit((g, m) => this._track(g, m));
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < nProps(14); i++) {
       const g = Math.random() < 0.55 ? buildPine(snowKit) : buildSnowBoulder(snowKit);
       place(g); add(g, { kind: "snow" });
     }
@@ -769,7 +772,7 @@ export class PastelWorld {
     }
 
     // Broken pillars (solid).
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < nProps(12); i++) {
       const g = new THREE.Group();
       g.add(column(0.4, 1.4 + Math.random() * 2.4, i % 2 ? stone : stoneDark, 0, 0, true));
       g.rotation.set((Math.random() - 0.5) * 0.15, Math.random() * Math.PI, (Math.random() - 0.5) * 0.15);
@@ -777,7 +780,7 @@ export class PastelWorld {
     }
 
     // Ruined wall segments (solid).
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < nProps(14); i++) {
       const g = new THREE.Group();
       const len = 3 + Math.random() * 5, h = 1.6 + Math.random() * 1.6;
       if (Math.random() < 0.5) g.add(block(len, h, 0.7, stone, 0, h / 2, 0, true));
@@ -853,7 +856,7 @@ export class PastelWorld {
     const mat = new THREE.MeshStandardMaterial({ color: "#2b3a4a", roughness: 1, transparent: true, opacity: 0.6, flatShading: true });
     this._disp.push(mat);
     const R = 240;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < PERF.clouds; i++) {
       const g = new THREE.Group();
       const puffs = 3 + Math.floor(Math.random() * 3);
       for (let p = 0; p < puffs; p++) {

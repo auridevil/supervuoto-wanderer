@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>supervuoto-wanderer</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -206,6 +206,52 @@
         padding: 0.5rem 1.4rem; transition: background 0.25s, transform 0.15s;
       }
       #captureBtn:hover { background: rgba(255,255,255,0.18); transform: scale(1.04); }
+
+      /* ---- Touch (mobile) UI ---- */
+      html, body { overscroll-behavior: none; }
+      /* Full-screen touch surface: joystick spawns on the left, drag-look elsewhere. */
+      #touchLayer {
+        inset: 0; z-index: 1; touch-action: none;
+      }
+      #touchLayer.hidden { display: none; }
+      body.touch #hud { display: none; }         /* keyboard hints are meaningless */
+      body.touch #reticle { display: none; }
+      body.touch #panel { z-index: 3; max-height: 46vh; overflow-y: auto; }
+      #joy {
+        position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px;
+        border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.35);
+        background: rgba(255,255,255,0.06); backdrop-filter: blur(2px);
+        display: none; z-index: 2; pointer-events: none;
+      }
+      #joy.on { display: block; }
+      #joyStick {
+        position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
+        margin: -24px 0 0 -24px; border-radius: 50%;
+        background: rgba(255,255,255,0.35);
+      }
+      #touchButtons {
+        right: calc(0.9rem + env(safe-area-inset-right));
+        bottom: calc(5.4rem + env(safe-area-inset-bottom));
+        display: flex; flex-direction: column; gap: 0.7rem; z-index: 3;
+      }
+      #touchButtons.hidden { display: none; }
+      body.photo #touchButtons .tbtn:not(#tPhoto) { display: none; }
+      .tbtn {
+        width: 52px; height: 52px; border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.35);
+        background: rgba(10,14,22,0.5); color: var(--fg);
+        font-size: 1.25rem; line-height: 1; font-family: inherit;
+        backdrop-filter: blur(4px); touch-action: manipulation;
+      }
+      #tJump { width: 64px; height: 64px; font-size: 1.6rem; }
+
+      @media (max-width: 700px) {
+        #wayfind { top: calc(0.7rem + env(safe-area-inset-top)); left: calc(0.8rem + env(safe-area-inset-left)); }
+        #panel { right: calc(0.7rem + env(safe-area-inset-right)); bottom: calc(0.7rem + env(safe-area-inset-bottom)); min-width: 150px; font-size: 0.72rem; }
+        #worldName { top: calc(0.8rem + env(safe-area-inset-top)); }
+        #overlay p { max-width: 86vw; }
+        #mobileNote { max-width: 86vw; }
+      }
     </style>
   </head>
   <body>
@@ -214,7 +260,7 @@
     <div id="overlay" class="ui">
       <h1>Supervuoto&nbsp;Wanderer</h1>
       <div class="tagline">an endless walk through sound</div>
-      <div id="mobileNote">📱 This is a <b>desktop</b> experience — it needs a <b>keyboard &amp; mouse</b> (WASD&nbsp;+&nbsp;mouse&#8209;look) and pointer&#8209;lock, which phones &amp; tablets don't support. Please open it on a computer to wander.</div>
+      <div id="mobileNote">📱 Touch controls: <b>left thumb</b> — walk (a joystick appears under it) &nbsp;·&nbsp; <b>drag right side</b> — look around &nbsp;·&nbsp; <b>↥</b> — jump. Headphones recommended.</div>
       <p>A goalless wander through a moonlit world that breathes with the music. No objective. Just walk.</p>
       <div class="start-btn">Click to enter</div>
       <div class="file-row" onclick="event.stopPropagation()">
@@ -289,6 +335,17 @@
     <div id="photoBar" class="ui">
       <button id="captureBtn" type="button">Capture</button>
       <span class="hint"><kbd>P</kbd> to exit photo mode</span>
+    </div>
+
+    <!-- Touch (mobile) controls: full-screen input surface + spawn-at-thumb
+         joystick + action buttons. Shown only in touch mode after start. -->
+    <div id="touchLayer" class="ui hidden"></div>
+    <div id="joy"><div id="joyStick"></div></div>
+    <div id="touchButtons" class="ui hidden">
+      <button class="tbtn" id="tPhoto" type="button" aria-label="Photo mode">📷</button>
+      <button class="tbtn" id="tWorld" type="button" aria-label="Switch world">🌐</button>
+      <button class="tbtn" id="tView" type="button" aria-label="Toggle view">👁</button>
+      <button class="tbtn" id="tJump" type="button" aria-label="Jump">↥</button>
     </div>
 
     <script type="module" src="/src/main.js"></script>
