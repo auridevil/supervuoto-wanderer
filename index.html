@@ -228,7 +228,9 @@
       #touchLayer.hidden { display: none; }
       body.touch #hud { display: none; }         /* keyboard hints are meaningless */
       body.touch #reticle { display: none; }
-      body.touch #panel { z-index: 3; max-height: 46vh; overflow-y: auto; }
+      /* Panel sits above the action buttons so its controls stay tappable when open. */
+      body.touch #panel { z-index: 4; max-height: 46vh; overflow-y: auto; }
+      body.touch #settings-head { touch-action: manipulation; }
       #joy {
         position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px;
         border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.35);
@@ -241,9 +243,11 @@
         margin: -24px 0 0 -24px; border-radius: 50%;
         background: rgba(255,255,255,0.35);
       }
+      /* Action buttons ride the right edge, vertically centred — clear of the
+         top-right stats chip and the bottom-right settings panel. */
       #touchButtons {
-        right: calc(0.9rem + env(safe-area-inset-right));
-        bottom: calc(5.4rem + env(safe-area-inset-bottom));
+        right: calc(0.7rem + env(safe-area-inset-right));
+        top: 50%; transform: translateY(-50%);
         display: flex; flex-direction: column; gap: 0.7rem; z-index: 3;
       }
       #touchButtons.hidden { display: none; }

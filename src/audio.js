@@ -34,6 +34,21 @@ export class AudioEngine {
     if (this.ctx.state === "suspended") await this.ctx.resume();
   }
 
+  // iOS/Safari only start an AudioContext from inside a user gesture, and often
+  // need a real (silent) buffer to play before they'll unlock. Call this
+  // SYNCHRONOUSLY from the tap handler (before any await), not after.
+  unlock() {
+    this._ensureCtx();
+    if (this.ctx.state === "suspended") this.ctx.resume();
+    try {
+      const buf = this.ctx.createBuffer(1, 1, 22050);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.ctx.destination);
+      src.start(0);
+    } catch { /* already unlocked */ }
+  }
+
   _disconnectSource() {
     this._stopPlaceholder();
     if (this.audioEl) { this.audioEl.pause(); this.audioEl = null; }
@@ -47,6 +62,8 @@ export class AudioEngine {
     const el = new Audio();
     el.crossOrigin = "anonymous";
     el.loop = true;
+    el.playsInline = true;            // iOS: play inline, don't hand off to fullscreen
+    el.setAttribute("playsinline", "");
     el.src = typeof src === "string" ? src : URL.createObjectURL(src);
     this.audioEl = el;
     this.source = this.ctx.createMediaElementSource(el);

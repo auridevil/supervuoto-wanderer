@@ -290,10 +290,17 @@ if (setExposure)
   });
 
 // Collapsible settings section (default collapsed to stay compact).
+// Toggle on pointerup with a small movement threshold rather than click: the
+// mobile panel scrolls (overflow-y: auto), and iOS suppresses the synthetic
+// click when a tap is read as a scroll-start — so `click` never fired to close it.
 const settingsHead = document.getElementById("settings-head");
 if (settingsHead) {
   panel.classList.add("collapsed");
-  settingsHead.addEventListener("click", () => panel.classList.toggle("collapsed"));
+  let downX = 0, downY = 0;
+  settingsHead.addEventListener("pointerdown", (e) => { downX = e.clientX; downY = e.clientY; });
+  settingsHead.addEventListener("pointerup", (e) => {
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) < 10) panel.classList.toggle("collapsed");
+  });
 }
 
 // Push restored values into UI + engine. applyReduceMotion runs again after the
@@ -354,6 +361,7 @@ trackInput.addEventListener("change", (e) => {
 async function start() {
   if (started) return;
   started = true;
+  audio.unlock(); // synchronous, still inside the tap gesture — unlocks iOS audio
   overlay.classList.add("hidden");
   hud.classList.remove("hidden");
   panel.classList.remove("hidden");
