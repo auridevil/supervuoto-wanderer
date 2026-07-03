@@ -350,8 +350,10 @@ if (IS_MOBILE) {
   tap("tView", toggleView);
   tap("tWorld", () => setWorld(active === worlds.pastel ? "plane" : "pastel"));
   tap("tPhoto", () => setPhotoMode(!photoMode));
-  // iOS suspends the AudioContext on interruptions; nudge it back on touch.
-  document.addEventListener("touchend", () => { if (started) audio.resume(); }, { passive: true });
+  // iOS suspends the context / pauses the unmute element on interruptions;
+  // nudge both back on touch and when returning to the tab.
+  document.addEventListener("touchend", () => { if (started) audio.keepAlive(); }, { passive: true });
+  document.addEventListener("visibilitychange", () => { if (started && !document.hidden) audio.keepAlive(); });
 }
 
 trackInput.addEventListener("change", (e) => {

@@ -34,19 +34,62 @@ export class AudioEngine {
     if (this.ctx.state === "suspended") await this.ctx.resume();
   }
 
-  // iOS/Safari only start an AudioContext from inside a user gesture, and often
-  // need a real (silent) buffer to play before they'll unlock. Call this
-  // SYNCHRONOUSLY from the tap handler (before any await), not after.
+  // iOS/Safari only start an AudioContext from inside a user gesture, and — the
+  // big one — route Web Audio to the *ringer* channel, which the hardware
+  // silent switch mutes. Keeping a silent HTMLAudioElement looping flips iOS
+  // into "media playback" mode so the whole graph plays through the media
+  // channel instead, ignoring the switch (the unmute trick Howler/Tone use).
+  // Call this SYNCHRONOUSLY from the tap handler (before any await).
   unlock() {
     this._ensureCtx();
     if (this.ctx.state === "suspended") this.ctx.resume();
+    // Silent buffer nudge (helps some browsers actually leave "suspended").
     try {
-      const buf = this.ctx.createBuffer(1, 1, 22050);
       const src = this.ctx.createBufferSource();
-      src.buffer = buf;
+      src.buffer = this.ctx.createBuffer(1, 1, 22050);
       src.connect(this.ctx.destination);
       src.start(0);
     } catch { /* already unlocked */ }
+    // Silent looping media element -> media channel -> bypasses the mute switch.
+    try {
+      if (!this._silentEl) {
+        const el = new Audio(this._silentWavUrl());
+        el.loop = true;
+        el.playsInline = true;
+        el.setAttribute("playsinline", "");
+        el.volume = 0.001; // effectively silent, but a nonzero media stream
+        this._silentEl = el;
+      }
+      const p = this._silentEl.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch { /* ignore */ }
+  }
+
+  // A tiny silent 16-bit PCM WAV as an object URL (built once), for the unmute
+  // element above — avoids shipping a big base64 blob.
+  _silentWavUrl() {
+    if (this._silentUrl) return this._silentUrl;
+    const rate = 8000, n = rate * 0.5; // 0.5s of silence, looped
+    const buf = new ArrayBuffer(44 + n * 2);
+    const v = new DataView(buf);
+    const s = (off, str) => { for (let i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i)); };
+    s(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); s(8, "WAVE"); s(12, "fmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    s(36, "data"); v.setUint32(40, n * 2, true); // samples already zero = silence
+    this._silentUrl = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+    return this._silentUrl;
+  }
+
+  // Cheap periodic nudge (call on touch / visibility): resume the context and
+  // make sure the silent unmute element is still playing after any interruption.
+  keepAlive() {
+    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+    if (this._silentEl && this._silentEl.paused) {
+      const p = this._silentEl.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    }
   }
 
   _disconnectSource() {
