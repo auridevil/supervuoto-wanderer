@@ -264,6 +264,14 @@
         #worldName { top: calc(0.8rem + env(safe-area-inset-top)); }
         #overlay p { max-width: 86vw; }
         #mobileNote { max-width: 86vw; }
+        /* The title is far wider than a phone; let it wrap and tighten it so it
+           never overflows (#overlay clips, so overflow = cut-off letters). */
+        #overlay h1 {
+          font-size: clamp(1.9rem, 9vw, 3rem);
+          letter-spacing: 0.14em; margin-left: 0.14em;
+          max-width: 94vw; overflow-wrap: break-word;
+        }
+        #overlay .tagline { font-size: 0.62rem; letter-spacing: 0.3em; }
       }
     </style>
   </head>
@@ -271,7 +279,7 @@
     <div id="app"></div>
 
     <div id="overlay" class="ui">
-      <h1>Supervuoto&nbsp;Wanderer</h1>
+      <h1>Supervuoto Wanderer</h1>
       <div class="tagline">an endless walk through sound</div>
       <div id="mobileNote">📱 Touch controls: <b>left thumb</b> — walk (a joystick appears under it) &nbsp;·&nbsp; <b>drag right side</b> — look around &nbsp;·&nbsp; <b>↥</b> — jump. Headphones recommended.</div>
       <p>A goalless wander through a moonlit world that breathes with the music. No objective. Just walk.</p>
