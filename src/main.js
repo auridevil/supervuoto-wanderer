@@ -12,6 +12,7 @@ import { PlaneWorld } from "./worlds/plane.js";
 import { Wizard } from "./character.js";
 import { LofiShader } from "./lofi.js";
 import { Wayfinding } from "./wayfinding.js";
+import { Journey } from "./journey.js";
 
 const app = document.getElementById("app");
 
@@ -44,6 +45,18 @@ syncResolution();
 
 const controls = new WalkControls(camera, renderer.domElement);
 const audio = new AudioEngine();
+
+// The Night Journey: a real-time one-hour arc (companion wisp, meteor shower,
+// lantern festival, sky whale, aurora storm, spirit herd, comet, sunrise) that
+// drives the worlds' day/night progress and the stats chip.
+const journey = new Journey(scene);
+
+// Ring pickups feed the journey (wisp growth, stats) and ring a soft chime
+// that the analyser hears — so the world reacts to your own collecting.
+function onRingCollected() {
+  journey.collectRing();
+  audio.chime(journey.rings - 1);
+}
 
 // ---- wayfinding HUD chips ----
 const wayfinding = new Wayfinding();
@@ -89,6 +102,7 @@ function setWorld(key) {
   controls.collide = typeof active.solveCollision === "function" ? active.solveCollision.bind(active) : null;
   if ("waveWidth" in active) active.waveWidth = waveWidth;
   if ("reduceMotion" in active) active.reduceMotion = settings.reduceMotion;
+  if ("onCollect" in active) active.onCollect = onRingCollected;
   flashWorldName(active.name);
 }
 
@@ -176,6 +190,7 @@ function setWaveWidth(v) {
 function applyReduceMotion() {
   if (active && "reduceMotion" in active) active.reduceMotion = settings.reduceMotion;
   wizard.reduceMotion = settings.reduceMotion;
+  journey.reduceMotion = settings.reduceMotion;
   if (setReduceMotion) setReduceMotion.checked = settings.reduceMotion;
 }
 
@@ -293,12 +308,13 @@ applyReduceMotion();
 
 const worldNameEl = document.getElementById("worldName");
 let nameTimer;
-function flashWorldName(name) {
+function flashWorldName(name, ms = 2200) {
   worldNameEl.textContent = name;
   worldNameEl.style.opacity = "1";
   clearTimeout(nameTimer);
-  nameTimer = setTimeout(() => (worldNameEl.style.opacity = "0"), 2200);
+  nameTimer = setTimeout(() => (worldNameEl.style.opacity = "0"), ms);
 }
+journey.toast = flashWorldName; // journey events announce themselves up top
 
 // ---- start flow ----
 const overlay = document.getElementById("overlay");
@@ -364,6 +380,7 @@ async function start() {
   }
 
   controls.lock();
+  journey.begin();
 }
 
 overlay.addEventListener("click", start);
@@ -442,11 +459,13 @@ function animate() {
   const bands = audio.update(dt);
   controls.update(dt);
 
-  // Day/night arc: feed playback progress to the active world (guarded — not
-  // every world exposes a progress property / audio a progress method).
-  if (active && "progress" in active && typeof audio.progress === "function") {
-    active.progress = audio.progress();
+  // Day/night arc: the Night Journey drives it — a true one-hour night that
+  // ends in dawn, regardless of track length (guarded — not every world
+  // exposes a progress property).
+  if (active && "progress" in active) {
+    active.progress = journey.progress;
   }
+  journey.update(dt, elapsed, bands, audio.beat, camera, controls, active);
 
   // Wayfinding: self-throttling sample, then rotate the HUD chips.
   wayfinding.update(dt, camera.position, controls.yaw);

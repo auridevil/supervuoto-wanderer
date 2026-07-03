@@ -52,6 +52,13 @@ const sandLo = new THREE.Color("#7c6438"); // desert
 const sandHi = new THREE.Color("#c4a86e");
 const rockLo = new THREE.Color("#4a4d56"); // snowy peak
 const snowHi = new THREE.Color("#eef3f8");
+// Sunrise palette — the Journey's dawn finale lerps the arc toward these.
+const DAWN_TOP = new THREE.Color("#3a4a7a");
+const DAWN_BOT = new THREE.Color("#e8a25e");
+const DAWN_FOG = new THREE.Color("#8a6a52");
+const DAWN_SUN = new THREE.Color("#ffd9a0");
+const DAWN_WATER_SH = new THREE.Color("#7a9a8a");
+const DAWN_WATER_DP = new THREE.Color("#2a3540");
 const tmp = new THREE.Color();
 const tmpB = new THREE.Color();
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -91,7 +98,10 @@ export class PastelWorld {
     this.onWave = 0;      // 0..1, how much the player stands on the waveform
     this.flash = 0;       // red pickup flash, decays each frame
     this.reduceMotion = false; // photosensitivity: damp beat-driven flashes/strobes (main.js sets it)
-    this.progress = 0;    // 0..1 playback position; main.js sets each frame -> day/night arc
+    this.progress = 0;    // 0..1 journey position; main.js sets each frame -> day/night arc
+    this.onCollect = null;  // called when the walker picks up a ring (Journey hooks this)
+    this.auroraBoost = 0;   // extra aurora energy (Journey's aurora-storm event)
+    this.sunrise = 0;       // 0..1 dawn finale: warms sky/fog/water, fades the night
     // Day/night keyframes: sunset -> deep-night -> dawn. Each holds base colors
     // (re-applied each frame as the music reaction layers on top), fog, moon,
     // water tint and a 0..1 "night" weight that brightens lanterns/fireflies/aura.
@@ -475,6 +485,7 @@ export class PastelWorld {
       const dx = cam.x - lx, dcz = cam.z - lz;
       if (dx * dx + dcz * dcz < 1.5 * 1.5) {
         c.collected = true; c.mesh.visible = false; this._fireRipple(cam); this.flash = 1;
+        if (this.onCollect) this.onCollect();
       }
     }
   }
@@ -537,11 +548,11 @@ export class PastelWorld {
       },
       vertexShader: `uniform vec3 cam; varying vec2 w;
         void main(){ w = position.xz + cam.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-      fragmentShader: `uniform float time, energy; uniform vec3 colA, colB; varying vec2 w;
+      fragmentShader: `uniform float time, energy; uniform vec3 colA, colB; uniform vec3 cam; varying vec2 w;
         void main(){
           float v = sin(w.x*0.01 + time*0.25 + sin(w.y*0.02)*2.0);
           float a = pow(max(0.0, v), 3.0);
-          float fade = smoothstep(380.0, 120.0, length(w - cam.xz*0.0)); // softens far edges
+          float fade = smoothstep(380.0, 120.0, length(w - cam.xz)); // softens far edges
           vec3 c = mix(colA, colB, 0.5 + 0.5*sin(time*0.12 + w.y*0.004));
           gl_FragColor = vec4(c, a * energy * fade);
         }`,
@@ -941,6 +952,20 @@ export class PastelWorld {
     // --- day/night arc: sunset -> deep-night -> dawn base palette ---
     // Resolved each frame; the music reaction below layers ON TOP of these bases.
     const arc = this._sampleArc();
+    // Dawn finale (Journey): warm the whole resolved keyframe so everything
+    // downstream — sky, fog, moon->sun, water, night-scaled glows — follows.
+    if (this.sunrise > 0) {
+      const s = this.sunrise;
+      arc.skyTop.lerp(DAWN_TOP, s * 0.75);
+      arc.skyBot.lerp(DAWN_BOT, s * 0.8);
+      arc.fog.lerp(DAWN_FOG, s * 0.7);
+      arc.fogD *= 1 - s * 0.45;
+      arc.moonCol.lerp(DAWN_SUN, s * 0.85);
+      arc.moon += s * 0.55;
+      arc.waterSh.lerp(DAWN_WATER_SH, s * 0.7);
+      arc.waterDp.lerp(DAWN_WATER_DP, s * 0.7);
+      arc.night *= 1 - s * 0.9;
+    }
     const night = arc.night; // 0..1, peaks mid-progress
 
     // --- global sky / light reaction (strong) ---
@@ -984,7 +1009,7 @@ export class PastelWorld {
     this.aurora.position.set(cam.x, 115, cam.z);
     this.auroraMat.uniforms.time.value = elapsed;
     this.auroraMat.uniforms.cam.value.copy(cam);
-    this.auroraMat.uniforms.energy.value = (0.22 + night * 0.28) + bands.mid * 1.3 + bands.treble * 0.9 + beat * 0.4 * fm;
+    this.auroraMat.uniforms.energy.value = (0.22 + night * 0.28) + this.auroraBoost + bands.mid * 1.3 + bands.treble * 0.9 + beat * 0.4 * fm;
     this.auroraMat.uniforms.colA.value.setHSL((0.38 + bands.bass * 0.12) % 1, 0.8, 0.55);  // green
     this.auroraMat.uniforms.colB.value.setHSL((0.52 + bands.treble * 0.15) % 1, 0.8, 0.55); // teal-cyan
 

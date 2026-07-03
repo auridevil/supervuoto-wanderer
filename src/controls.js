@@ -56,7 +56,12 @@ export class WalkControls {
 
   lock() {
     if (this.touchMode) { this.enabled = true; return; }
-    this.dom.requestPointerLock();
+    // requestPointerLock can reject (iframe/permissions policies); don't let
+    // that surface as an unhandled error — the user just clicks again.
+    try {
+      const p = this.dom.requestPointerLock();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch { /* unsupported environment */ }
   }
 
   jump() {

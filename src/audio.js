@@ -159,6 +159,32 @@ export class AudioEngine {
     return this.bands;
   }
 
+  // A soft bell for ring pickups, routed through the analyser so the world
+  // "hears" it too. Steps walk up a pentatonic scale as the streak grows.
+  chime(step = 0) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const scale = [0, 3, 5, 7, 10, 12, 15];
+    const f = 392 * Math.pow(2, scale[step % scale.length] / 12);
+    const t0 = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
+    g.connect(this.analyser);
+    // Slightly inharmonic partials -> small glass bell.
+    for (const [mul, amp] of [[1, 1], [2.01, 0.4], [2.99, 0.15]]) {
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = f * mul;
+      const og = ctx.createGain();
+      og.gain.value = amp;
+      o.connect(og).connect(g);
+      o.start(t0);
+      o.stop(t0 + 1.2);
+    }
+  }
+
   // Playback position 0..1, drives the day/night arc.
   // File: real currentTime/duration. Generative pad: a virtual 3600s loop
   // keyed off the AudioContext clock so the sky still cycles with no track.

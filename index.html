@@ -159,6 +159,17 @@
       .wf-label b { color: var(--fg); font-weight: 500; }
       .wf-dist { opacity: 0.6; margin-left: 0.15rem; }
 
+      /* Journey stats — time walked · distance · rings. Top-right, quiet. */
+      #stats {
+        top: 1.1rem; right: 1.2rem;
+        font-size: 0.72rem; letter-spacing: 0.08em;
+        color: var(--muted); background: rgba(10,14,22,0.45);
+        border: 1px solid rgba(255,255,255,0.12); border-radius: 999px;
+        padding: 0.32rem 0.8rem; backdrop-filter: blur(6px); pointer-events: none;
+      }
+      #stats.hidden { display: none; }
+      #stats b { color: var(--fg); font-weight: 500; }
+
       #worldName {
         top: 1.1rem; left: 50%; transform: translateX(-50%);
         font-size: 0.85rem; letter-spacing: 0.25em; text-transform: uppercase;
@@ -183,6 +194,7 @@
       body.photo #panel,
       body.photo #reticle,
       body.photo #wayfind,
+      body.photo #stats,
       body.photo #worldName { display: none !important; }
 
       /* Capture bar — only visible while in photo mode. */
@@ -247,6 +259,7 @@
 
       @media (max-width: 700px) {
         #wayfind { top: calc(0.7rem + env(safe-area-inset-top)); left: calc(0.8rem + env(safe-area-inset-left)); }
+        #stats { top: calc(0.7rem + env(safe-area-inset-top)); right: calc(0.7rem + env(safe-area-inset-right)); }
         #panel { right: calc(0.7rem + env(safe-area-inset-right)); bottom: calc(0.7rem + env(safe-area-inset-bottom)); min-width: 150px; font-size: 0.72rem; }
         #worldName { top: calc(0.8rem + env(safe-area-inset-top)); }
         #overlay p { max-width: 86vw; }
@@ -272,6 +285,7 @@
 
     <div id="reticle" class="ui hidden"></div>
     <div id="worldName" class="ui"></div>
+    <div id="stats" class="ui hidden"></div>
     <div id="wayfind" class="ui hidden">
       <div id="wf-desert" class="wf-chip">
         <span class="wf-arrow">▲</span>
