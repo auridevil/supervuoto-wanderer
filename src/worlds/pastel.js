@@ -53,12 +53,12 @@ const sandHi = new THREE.Color("#c4a86e");
 const rockLo = new THREE.Color("#4a4d56"); // snowy peak
 const snowHi = new THREE.Color("#eef3f8");
 // Sunrise palette — the Journey's dawn finale lerps the arc toward these.
-const DAWN_TOP = new THREE.Color("#3a4a7a");
-const DAWN_BOT = new THREE.Color("#e8a25e");
-const DAWN_FOG = new THREE.Color("#8a6a52");
-const DAWN_SUN = new THREE.Color("#ffd9a0");
-const DAWN_WATER_SH = new THREE.Color("#7a9a8a");
-const DAWN_WATER_DP = new THREE.Color("#2a3540");
+const DAWN_TOP = new THREE.Color("#6f93cf");      // daytime sky blue
+const DAWN_BOT = new THREE.Color("#f3ba7a");      // warm morning horizon
+const DAWN_FOG = new THREE.Color("#b4c6d4");      // pale hazy daylight
+const DAWN_SUN = new THREE.Color("#fff2d8");      // bright warm sun
+const DAWN_WATER_SH = new THREE.Color("#93b2b0");
+const DAWN_WATER_DP = new THREE.Color("#35525e");
 const tmp = new THREE.Color();
 const tmpB = new THREE.Color();
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -956,15 +956,15 @@ export class PastelWorld {
     // downstream — sky, fog, moon->sun, water, night-scaled glows — follows.
     if (this.sunrise > 0) {
       const s = this.sunrise;
-      arc.skyTop.lerp(DAWN_TOP, s * 0.75);
-      arc.skyBot.lerp(DAWN_BOT, s * 0.8);
-      arc.fog.lerp(DAWN_FOG, s * 0.7);
-      arc.fogD *= 1 - s * 0.45;
-      arc.moonCol.lerp(DAWN_SUN, s * 0.85);
-      arc.moon += s * 0.55;
-      arc.waterSh.lerp(DAWN_WATER_SH, s * 0.7);
-      arc.waterDp.lerp(DAWN_WATER_DP, s * 0.7);
-      arc.night *= 1 - s * 0.9;
+      arc.skyTop.lerp(DAWN_TOP, s * 0.9);
+      arc.skyBot.lerp(DAWN_BOT, s * 0.85);
+      arc.fog.lerp(DAWN_FOG, s * 0.8);
+      arc.fogD *= 1 - s * 0.6;         // distance clears up in daylight
+      arc.moonCol.lerp(DAWN_SUN, s * 0.9);
+      arc.moon += s * 0.9;             // the "moon" light becomes the sun
+      arc.waterSh.lerp(DAWN_WATER_SH, s * 0.8);
+      arc.waterDp.lerp(DAWN_WATER_DP, s * 0.8);
+      arc.night *= 1 - s * 0.95;
     }
     const night = arc.night; // 0..1, peaks mid-progress
 
@@ -977,11 +977,13 @@ export class PastelWorld {
       .offsetHSL(tH * 0.14 + bands.treble * 0.15, Math.sin(elapsed * 0.05) * 0.08 + bands.mid * 0.15, Math.sin(elapsed * 0.05) * 0.05 + bands.mid * 0.12 + beat * 0.1);
     this.skyMat.uniforms.bot.value.copy(arc.skyBot)
       .offsetHSL(tH2 * 0.14 - bands.bass * 0.12, Math.sin(elapsed * 0.045 + 1.0) * 0.08, Math.sin(elapsed * 0.04) * 0.05 + bands.level * 0.12 + beat * 0.08);
-    if (this.scene.background) this.scene.background.copy(arc.skyBot).multiplyScalar(0.5);
+    // At full daylight, lift the sky-derived background so it doesn't read dim.
+    if (this.scene.background) this.scene.background.copy(arc.skyBot).multiplyScalar(0.5 + this.sunrise * 0.35);
     // Moon (sunLight) intensity + colour ramp across the arc, beat still kicks it.
     this.sunLight.intensity = arc.moon + beat * 1.6 + bands.bass * 1.0;
     this.sunLight.color.copy(arc.moonCol);
-    this.hemi.intensity = (0.28 + night * 0.18) + bands.level * 1.3 + beat * 0.7;
+    // Daytime ambient lift (this.sunrise) so terrain isn't dark under the risen sun.
+    this.hemi.intensity = (0.28 + night * 0.18 + this.sunrise * 0.5) + bands.level * 1.3 + beat * 0.7;
     this.scene.fog.color.copy(arc.fog);
     this.scene.fog.density = arc.fogD + bands.bass * 0.0065;
     // Hills get a subtle cool moonlit lift on the beat (no green wash).

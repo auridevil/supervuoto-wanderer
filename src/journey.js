@@ -1,16 +1,17 @@
 import * as THREE from "three";
 
-// The Night Journey — a real-time, one-hour arc of wonders that rewards staying.
-// The day/night sky (worlds' `progress`) is driven by walked time, not the
-// track, so the night lasts a true hour and ends in an earned sunrise. Along
-// the way, timed events appear: a companion wisp, a meteor shower, a lantern
-// festival, a sky whale, an aurora storm, a spirit herd, a comet — and dawn.
+// The Night Journey — a real-time, 30-minute passage from dusk to daylight that
+// rewards staying. The day/night sky (worlds' `progress`) is driven by walked
+// time, not the track, so night falls, deepens, and lifts into a full sunrise
+// exactly at the 30-minute mark. Along the way, timed events appear: a companion
+// wisp, a meteor shower, a lantern festival, a sky whale, an aurora, a spirit
+// herd, a comet — then daybreak.
 //
 // All event visuals are owned here (built lazily, camera-anchored) so they
 // work over any world; world-specific hooks (auroraBoost, sunrise, onCollect)
 // are set only when the active world exposes them.
 
-const HOUR = 3600;
+const SPAN = 1800; // 30 minutes: dusk -> deep night -> daylight
 const rand = (a, b) => a + Math.random() * (b - a);
 
 // 0 → 1 → 0 envelope over u∈(0,1): quick fade-in, hold, gentle fade-out.
@@ -39,18 +40,19 @@ export class Journey {
       catch { return 1; }
     })();
 
-    // The hour, in order. Each fires once (toast + _start_*); while inside
-    // [t, t+dur] its _tick_* runs with u = phase 0..1.
+    // The 30 minutes, in order. Each fires once (toast + _start_*); while inside
+    // [t, t+dur] its _tick_* runs with u = phase 0..1. Dawn runs 26:00 -> 30:00
+    // so daylight lands right at the SPAN mark, then holds.
     this.events = [
-      { t: 150,  dur: 0,   name: "wisp",     msg: "a small light has taken a liking to you" },
-      { t: 480,  dur: 80,  name: "meteors",  msg: "meteor shower — look up" },
-      { t: 900,  dur: 95,  name: "lanterns", msg: "the valley releases its lanterns" },
-      { t: 1380, dur: 110, name: "whale",    msg: "something vast and gentle crosses the sky" },
-      { t: 1800, dur: 100, name: "aurora",   msg: "midnight — the aurora is singing" },
-      { t: 2340, dur: 70,  name: "herd",     msg: "spirit deer are running the hills" },
-      { t: 2820, dur: 50,  name: "comet",    msg: "a comet leans toward the west" },
-      { t: 3420, dur: 0,   name: "almost",   msg: "hold on, wanderer — dawn is close" },
-      { t: HOUR, dur: 300, name: "dawn",     msg: "you walked the whole night — here is your sunrise" },
+      { t: 75,   dur: 0,   name: "wisp",     msg: "a small light has taken a liking to you" },
+      { t: 240,  dur: 45,  name: "meteors",  msg: "meteor shower — look up" },
+      { t: 450,  dur: 55,  name: "lanterns", msg: "the valley releases its lanterns" },
+      { t: 690,  dur: 65,  name: "whale",    msg: "something vast and gentle crosses the sky" },
+      { t: 900,  dur: 60,  name: "aurora",   msg: "deep night — the aurora is singing" },
+      { t: 1140, dur: 40,  name: "herd",     msg: "spirit deer are running the hills" },
+      { t: 1350, dur: 30,  name: "comet",    msg: "a comet leans toward the west" },
+      { t: 1470, dur: 0,   name: "almost",   msg: "hold on, wanderer — daylight is close" },
+      { t: 1560, dur: 240, name: "dawn",     msg: "the sun clears the hills — you walked to morning" },
     ];
     for (const e of this.events) e.fired = false;
 
@@ -77,7 +79,9 @@ export class Journey {
 
   // Drives the worlds' day/night arc: a true one-hour night, capped at dawn.
   get progress() {
-    return this.started ? Math.min(this.t / HOUR, 1) : 0;
+    // Cap just under 1 so the arc holds at the dawn keyframe; exactly 1 would
+    // wrap (progress % 1 === 0) back to the sunset keyframe.
+    return this.started ? Math.min(this.t / SPAN, 0.9999) : 0;
   }
 
   collectRing() {
