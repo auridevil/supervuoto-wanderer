@@ -13,7 +13,7 @@ export class AudioEngine {
     this.audioEl = null;      // <audio> when a file is playing
     this.placeholderNodes = [];
     this.mode = "none";       // "file" | "placeholder"
-    this.chimeVolume = 0.3;   // 0..1 ring-pickup bell volume (main.js binds the setting)
+    this.chimeVolume = 0.18;  // 0..1 ring-pickup bell volume (main.js binds the setting)
   }
 
   _ensureCtx() {

@@ -125,7 +125,7 @@ const settings = {
   grain: 0.55,
   bloomOn: true,
   bloomStrength: 0.8,
-  chimeVolume: 0.3, // ring-pickup meditation bell (0..1), quiet by default
+  chimeVolume: 0.18, // ring-pickup meditation bell (0..1), soft by default
 };
 // Mobile perf profile: bloom is the priciest pass, default it off on phones.
 // Saved settings (loadSettings below) still win if the user flipped it back on.
@@ -485,9 +485,11 @@ overlay.addEventListener("click", start);
 // ---- demo / attract mode ----
 // The sage autopilots onto the waveform line and walks it forever, in third
 // person. Only the pastel world has a path; switch to it when enabling.
+// Demo is the default mode on open — the sage walks the line until you take
+// over (any movement key / screen touch exits it). Opt out with ?demo=0.
 const demoParam = (() => {
-  try { const v = new URLSearchParams(location.search).get("demo"); return v !== null && v !== "0" && v !== "false"; }
-  catch { return false; }
+  try { const v = new URLSearchParams(location.search).get("demo"); return v !== "0" && v !== "false"; }
+  catch { return true; }
 })();
 function setDemo(on) {
   if (on && active !== worlds.pastel) setWorld("pastel");
