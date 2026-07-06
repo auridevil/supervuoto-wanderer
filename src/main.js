@@ -360,6 +360,54 @@ trackInput.addEventListener("change", (e) => {
   pendingFile = e.target.files[0] || null;
 });
 
+// ---- ?track= / ?gdrive= querystring: load a mix by URL ----
+// Turn a pasted link into a direct audio URL. Google Drive share/file links
+// (and bare file ids) are rewritten to Drive's download endpoint — note this
+// is best-effort: Drive currently returns 403 to in-browser cross-origin
+// requests, so it falls back gracefully. CORS-clean hosts (Dropbox direct
+// links, S3/R2 with CORS, or a file in this app's /public) work fully.
+function resolveTrackUrl(raw) {
+  if (!raw) return null;
+  raw = decodeURIComponent(String(raw).trim());
+  const drive =
+    raw.match(/drive\.google\.com\/file\/d\/([\w-]+)/) ||
+    raw.match(/[?&]id=([\w-]+)/) ||
+    (/^[A-Za-z0-9_-]{25,}$/.test(raw) ? [null, raw] : null);
+  if (drive) return `https://drive.usercontent.google.com/download?id=${drive[1]}&export=download`;
+  if (/dropbox\.com/.test(raw)) {
+    let u = raw.replace(/\/\/(www\.)?dropbox\.com/, "//dl.dropboxusercontent.com").replace(/[?&]dl=\d/, "");
+    return u + (u.includes("?") ? "&" : "?") + "dl=1";
+  }
+  return raw; // assume it's already a direct audio URL
+}
+
+const trackParam = (() => {
+  try {
+    const p = new URLSearchParams(location.search);
+    return p.get("track") || p.get("gdrive") || null;
+  } catch { return null; }
+})();
+const trackUrl = resolveTrackUrl(trackParam);
+const trackIsDrive = /google\.com/.test(trackParam || "") || /^[A-Za-z0-9_-]{25,}$/.test((trackParam || "").trim());
+
+// Try reactive (CORS) first; fall back to play-only (no CORS, no analysis);
+// return "reactive" | "playonly" | null so start() can message the outcome.
+async function loadTrackUrl(url) {
+  try {
+    await audio.playFile(url, { crossOrigin: "anonymous", analyse: true });
+    return "reactive";
+  } catch (e1) {
+    console.warn("Reactive load failed, trying play-only:", e1);
+    try {
+      await audio.playFile(url, { crossOrigin: null, analyse: false });
+      return "playonly";
+    } catch (e2) {
+      console.warn("Play-only load failed too:", e2);
+      return null;
+    }
+  }
+}
+
 async function start() {
   if (started) return;
   started = true;
@@ -377,7 +425,22 @@ async function start() {
   await audio.resume();
   try {
     if (pendingFile) {
+      // A user-picked local file is same-origin (object URL) — always reactive.
       await audio.playFile(pendingFile);
+    } else if (trackUrl) {
+      // ?track= / ?gdrive= — load the mix by URL, with graceful fallbacks.
+      const mode = await loadTrackUrl(trackUrl);
+      if (mode === "playonly") {
+        flashWorldName("playing your track — visuals won't react (host sent no CORS headers)", 6000);
+      } else if (!mode) {
+        audio.startPlaceholder();
+        flashWorldName(
+          trackIsDrive
+            ? "google drive blocks in-browser playback — host the mix on dropbox / s3 instead"
+            : "couldn't load that track — playing the ambient pad",
+          7000
+        );
+      }
     } else {
       // Try a track shipped in /public, else fall back to the generative pad.
       const res = await fetch("music.mp3", { method: "HEAD" }).catch(() => null);

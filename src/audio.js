@@ -99,20 +99,38 @@ export class AudioEngine {
   }
 
   // Stream an audio file (URL or File). Best for long 1h tracks — no full decode.
-  async playFile(src) {
+  // Options:
+  //   crossOrigin: "anonymous" routes the audio through the analyser so the
+  //     world reacts — but the host MUST send CORS headers, else it errors.
+  //   analyse:false plays the element directly (no Web Audio), for hosts that
+  //     serve audio but no CORS: you still hear it, visuals just don't react.
+  // Rejects on media/network error (or a load stall) so callers can fall back.
+  async playFile(src, { crossOrigin = "anonymous", analyse = true } = {}) {
     this._ensureCtx();
     this._disconnectSource();
     const el = new Audio();
-    el.crossOrigin = "anonymous";
+    if (crossOrigin) el.crossOrigin = crossOrigin;
     el.loop = true;
     el.playsInline = true;            // iOS: play inline, don't hand off to fullscreen
     el.setAttribute("playsinline", "");
+    el.preload = "auto";
     el.src = typeof src === "string" ? src : URL.createObjectURL(src);
     this.audioEl = el;
-    this.source = this.ctx.createMediaElementSource(el);
-    this.source.connect(this.analyser);
+    if (analyse) {
+      // MediaElementSource redirects the element's output into the graph.
+      this.source = this.ctx.createMediaElementSource(el);
+      this.source.connect(this.analyser);
+    }
     this.mode = "file";
-    await el.play();
+
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const done = (fn, arg) => { if (!settled) { settled = true; clearTimeout(timer); fn(arg); } };
+      const timer = setTimeout(() => done(reject, new Error("load stalled")), 20000);
+      el.addEventListener("canplay", () => done(resolve), { once: true });
+      el.addEventListener("error", () => done(reject, new Error("media error " + (el.error && el.error.code))), { once: true });
+      el.play().then(() => done(resolve)).catch((e) => done(reject, e));
+    });
   }
 
   // Generative ambient pad so the world breathes even with no track loaded.

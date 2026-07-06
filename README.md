@@ -53,7 +53,24 @@ Press `1` / `2` anytime to switch worlds live.
 
 - Put a **`music.mp3`** in `public/` and it auto-loads (use your 1h track).
 - Or load any audio file from the start screen's file picker.
-- With no track, a generative ambient pad plays so visuals still react.
+- Or pass a URL: **`?track=<direct-audio-url>`** (e.g.
+  `?track=https://host/mix.mp3`). With no track, a generative ambient pad plays.
+
+### Loading a mix by URL — CORS matters
+
+The visuals react by analysing the audio through Web Audio, which requires the
+host to send permissive **CORS** headers (`Access-Control-Allow-Origin`). Pick
+the host accordingly:
+
+- ✅ **Works, reactive:** a file in this app's `public/` (same-origin); Dropbox
+  direct links (`?track=<dropbox share link>` — auto-rewritten to
+  `dl.dropboxusercontent.com`); S3 / Cloudflare R2 / Backblaze with a CORS rule.
+- ⚠️ **Plays but not reactive:** hosts that serve audio without CORS — the mix
+  is audible, the world just animates on its own (no music reaction).
+- ❌ **Google Drive does _not_ work.** `?gdrive=<share link or id>` is accepted
+  and rewritten, but Drive returns **403 to in-browser requests** (it blocks
+  cross-origin browser fetches), so it falls back to the ambient pad. Host the
+  mix on Dropbox / S3 / R2 instead. (curl can fetch Drive; browsers cannot.)
 
 The audio is analysed live: **bass** drives terrain motion / shape pulsing,
 **mids** drive sky & fog color, **treble** drives particles & glow, and detected
