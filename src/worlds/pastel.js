@@ -242,6 +242,15 @@ export class PastelWorld {
     return pathZ(x);
   }
 
+  // Keep a structure clear of the path corridor so walls never sit on the line
+  // (which blocks the walker / the demo autopilot). Nudges z to whichever side
+  // it's already on, just outside `clearance` of the path centre at that x.
+  _pushOffPath(pos, clearance) {
+    const cz = pathZ(pos.x);
+    const dz = pos.z - cz;
+    if (Math.abs(dz) < clearance) pos.z = cz + (dz < 0 ? -clearance : clearance);
+  }
+
   // Terrain height flattened into a corridor along the winding path.
   surfaceHeight(x, z) {
     const base = terrainHeight(x, z);
@@ -733,8 +742,13 @@ export class PastelWorld {
     };
     const addItem = (obj) => {
       this.scatterGroup.add(obj);
+      // Clearance = the structure's own XZ half-size + the path corridor +
+      // margin. Keep it (and its collision walls) off the line, here and on wrap.
+      const size = new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
+      const clear = 0.5 * Math.hypot(size.x, size.z) + PATH_HALF + 2.5;
+      this._pushOffPath(obj.position, clear);
       obj.position.y = this.heightAt(obj.position.x, obj.position.z);
-      this.scatter.push({ obj, kind: "ground", R, groundY: obj.position.y, phase: 0 });
+      this.scatter.push({ obj, kind: "ground", R, groundY: obj.position.y, phase: 0, clear });
     };
     // boxBlock: a scaled unit box; optionally a collision solid.
     const block = (w, h, d, mat, x, y, z, solid) => {
@@ -1043,7 +1057,10 @@ export class PastelWorld {
       else if (dx < -it.R) { o.position.x += it.R * 2; wrapped = true; }
       if (dz > it.R) { o.position.z -= it.R * 2; wrapped = true; }
       else if (dz < -it.R) { o.position.z += it.R * 2; wrapped = true; }
-      if (wrapped) it.groundY = this.heightAt(o.position.x, o.position.z);
+      if (wrapped) {
+        if (it.clear) this._pushOffPath(o.position, it.clear); // keep walls off the line
+        it.groundY = this.heightAt(o.position.x, o.position.z);
+      }
 
       if (it.kind === "crystal") {
         it.mat.emissiveIntensity = 0.4 + bands.bass * 3.8 + beat * 3 * fm;
