@@ -35,6 +35,8 @@ export class TouchControls {
 
   _start(e) {
     e.preventDefault();
+    // Touching the world surface hands control back if the demo is driving.
+    if (this.controls.demo) this.controls.demo = false;
     for (const t of e.changedTouches) {
       if (this.moveId === null && t.clientX < window.innerWidth * 0.45) {
         this.moveId = t.identifier;

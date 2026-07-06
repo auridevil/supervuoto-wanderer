@@ -28,6 +28,15 @@ export class WalkControls {
     this.touchMode = false;
     this.touchMove = { f: 0, s: 0 };
 
+    // Demo / attract mode: autopilot walks the winding path forever, so the
+    // sage strolls onto the waveform line and follows it. pathAt(x) -> centre z
+    // is supplied by the active world; input is ignored while demo is on.
+    this.demo = false;
+    this.pathAt = null;
+    this.demoLook = 9;    // metres ahead we aim for (higher = smoother, wider turns)
+    this.demoTurn = 2.2;  // yaw steering rate toward the aim point
+    this.demoPace = 0.6;  // fraction of speed — a calm stroll reads best
+
     // Jumping
     this.jumpOffset = 0;     // height above the ground baseline
     this.vy = 0;
@@ -69,7 +78,7 @@ export class WalkControls {
   }
 
   _onMouseMove(e) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.demo) return; // autopilot owns the camera in demo
     const s = 0.0022;
     this.yaw -= e.movementX * s;
     this.pitch -= e.movementY * s;
@@ -78,13 +87,28 @@ export class WalkControls {
   }
 
   update(dt) {
-    const forward = (this.keys.has("KeyW") || this.keys.has("ArrowUp") ? 1 : 0) -
-                    (this.keys.has("KeyS") || this.keys.has("ArrowDown") ? 1 : 0) +
-                    this.touchMove.f;
-    const strafe = (this.keys.has("KeyD") || this.keys.has("ArrowRight") ? 1 : 0) -
-                   (this.keys.has("KeyA") || this.keys.has("ArrowLeft") ? 1 : 0) +
-                   this.touchMove.s;
-    const boost = this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? this.slow : 1;
+    let forward, strafe, boost;
+    if (this.demo && this.pathAt) {
+      // Aim at a point ahead on the path centreline and steer the heading
+      // toward it; always walk forward. Approaching from off the path, this
+      // curves the sage onto the line, then follows its meander forever.
+      const dx = this.demoLook;
+      const dz = this.pathAt(this.position.x + this.demoLook) - this.position.z;
+      // forward vec is (-sin yaw, cos yaw); solve for the yaw that points at (dx,dz).
+      const desired = Math.atan2(-dx, dz);
+      const d = ((desired - this.yaw + Math.PI) % (Math.PI * 2)) - Math.PI;
+      this.yaw += d * Math.min(1, dt * this.demoTurn);
+      this.pitch += (-0.04 - this.pitch) * Math.min(1, dt * 2); // settle to a level gaze
+      forward = 1; strafe = 0; boost = this.demoPace;
+    } else {
+      forward = (this.keys.has("KeyW") || this.keys.has("ArrowUp") ? 1 : 0) -
+                (this.keys.has("KeyS") || this.keys.has("ArrowDown") ? 1 : 0) +
+                this.touchMove.f;
+      strafe = (this.keys.has("KeyD") || this.keys.has("ArrowRight") ? 1 : 0) -
+               (this.keys.has("KeyA") || this.keys.has("ArrowLeft") ? 1 : 0) +
+               this.touchMove.s;
+      boost = this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? this.slow : 1;
+    }
 
     // Move on the horizontal plane relative to where we're looking.
     // forwardVec = (-sin, cos); rightVec = forwardVec × up = (-cos, -sin).

@@ -100,6 +100,7 @@ function setWorld(key) {
   active.init(scene);
   controls.heightAt = active.heightAt;
   controls.collide = typeof active.solveCollision === "function" ? active.solveCollision.bind(active) : null;
+  controls.pathAt = typeof active.pathAt === "function" ? active.pathAt.bind(active) : null;
   if ("waveWidth" in active) active.waveWidth = waveWidth;
   if ("reduceMotion" in active) active.reduceMotion = settings.reduceMotion;
   if ("onCollect" in active) active.onCollect = onRingCollected;
@@ -350,6 +351,7 @@ if (IS_MOBILE) {
   tap("tView", toggleView);
   tap("tWorld", () => setWorld(active === worlds.pastel ? "plane" : "pastel"));
   tap("tPhoto", () => setPhotoMode(!photoMode));
+  tap("tDemo", () => setDemo(!controls.demo));
   // iOS suspends the context / pauses the unmute element on interruptions;
   // nudge both back on touch and when returning to the tab.
   document.addEventListener("touchend", () => { if (started) audio.keepAlive(); }, { passive: true });
@@ -454,9 +456,29 @@ async function start() {
 
   controls.lock();
   journey.begin();
+  if (demoParam) setDemo(true); // ?demo=1 — start in attract mode
 }
 
 overlay.addEventListener("click", start);
+
+// ---- demo / attract mode ----
+// The sage autopilots onto the waveform line and walks it forever, in third
+// person. Only the pastel world has a path; switch to it when enabling.
+const demoParam = (() => {
+  try { const v = new URLSearchParams(location.search).get("demo"); return v !== null && v !== "0" && v !== "false"; }
+  catch { return false; }
+})();
+function setDemo(on) {
+  if (on && active !== worlds.pastel) setWorld("pastel");
+  controls.demo = on;
+  if (on) {
+    controls.thirdPerson = true;
+    wizard.group.visible = true;
+    flashWorldName("Demo — the traveler walks the line", 2600);
+  } else {
+    flashWorldName("Demo off — you have the controls", 1600);
+  }
+}
 
 // Re-lock the pointer on click after Esc.
 renderer.domElement.addEventListener("click", () => {
@@ -502,11 +524,15 @@ function toggleView() {
 }
 
 // ---- world switch keys ----
+const MOVE_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]);
 window.addEventListener("keydown", (e) => {
   if (!started) return;
+  // Any manual movement while the demo drives hands control back to the user.
+  if (controls.demo && MOVE_KEYS.has(e.code)) { setDemo(false); return; }
   if (e.code === "Digit1") setWorld("pastel");
   if (e.code === "Digit2") setWorld("plane");
   if (e.code === "KeyV") toggleView();
+  if (e.code === "KeyG") setDemo(!controls.demo);
   if (e.code === "KeyP") setPhotoMode(!photoMode);
   if (e.code === "BracketLeft") setWaveWidth(waveWidth - 0.2);
   if (e.code === "BracketRight") setWaveWidth(waveWidth + 0.2);

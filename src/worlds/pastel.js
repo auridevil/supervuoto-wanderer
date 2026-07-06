@@ -236,6 +236,12 @@ export class PastelWorld {
     this._rebuild(0, 0);            // full synchronous build for the initial cell
   }
 
+  // The winding path's centre z at world x — the line the waveform runs along.
+  // Demo/autopilot (controls.pathAt) steers the sage onto and along it.
+  pathAt(x) {
+    return pathZ(x);
+  }
+
   // Terrain height flattened into a corridor along the winding path.
   surfaceHeight(x, z) {
     const base = terrainHeight(x, z);
