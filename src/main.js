@@ -125,6 +125,7 @@ const settings = {
   grain: 0.55,
   bloomOn: true,
   bloomStrength: 0.8,
+  chimeVolume: 0.3, // ring-pickup meditation bell (0..1), quiet by default
 };
 // Mobile perf profile: bloom is the priciest pass, default it off on phones.
 // Saved settings (loadSettings below) still win if the user flipped it back on.
@@ -176,6 +177,8 @@ const setSpeed = document.getElementById("setSpeed");
 const speedVal = document.getElementById("speedVal");
 const setExposure = document.getElementById("setExposure");
 const exposureVal = document.getElementById("exposureVal");
+const setChime = document.getElementById("setChime");
+const chimeVal = document.getElementById("chimeVal");
 
 // ---- appliers (each pushes one setting into the live engine) ----
 let waveWidth = settings.waveWidth; // kept as a top-level binding for the [ ] keys
@@ -215,6 +218,13 @@ function applyExposure() {
   renderer.toneMappingExposure = settings.exposure;
   if (setExposure) setExposure.value = settings.exposure;
   if (exposureVal) exposureVal.textContent = settings.exposure.toFixed(2);
+}
+
+function applyChimeVolume() {
+  settings.chimeVolume = clamp(settings.chimeVolume, 0, 1);
+  audio.chimeVolume = settings.chimeVolume;
+  if (setChime) setChime.value = settings.chimeVolume;
+  if (chimeVal) chimeVal.textContent = settings.chimeVolume.toFixed(2);
 }
 
 function applyLofi() {
@@ -289,6 +299,16 @@ if (setExposure)
     applyExposure();
     saveSettings();
   });
+let chimePreviewAt = 0;
+if (setChime)
+  setChime.addEventListener("input", () => {
+    settings.chimeVolume = parseFloat(setChime.value);
+    applyChimeVolume();
+    saveSettings();
+    // Preview the bell as you drag, throttled so it doesn't pile up.
+    const now = performance.now();
+    if (now - chimePreviewAt > 220) { chimePreviewAt = now; audio.chime(2); }
+  });
 
 // Collapsible settings section (default collapsed to stay compact).
 // Toggle on pointerup with a small movement threshold rather than click: the
@@ -309,6 +329,7 @@ if (settingsHead) {
 setWaveWidth(settings.waveWidth);
 applyMoveSpeed();
 applyExposure();
+applyChimeVolume();
 applyFov();
 applyLofi();
 applyBloom();

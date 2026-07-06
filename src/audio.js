@@ -13,6 +13,7 @@ export class AudioEngine {
     this.audioEl = null;      // <audio> when a file is playing
     this.placeholderNodes = [];
     this.mode = "none";       // "file" | "placeholder"
+    this.chimeVolume = 0.3;   // 0..1 ring-pickup bell volume (main.js binds the setting)
   }
 
   _ensureCtx() {
@@ -237,29 +238,43 @@ export class AudioEngine {
     return this.bands;
   }
 
-  // A soft bell for ring pickups, routed through the analyser so the world
-  // "hears" it too. Steps walk up a pentatonic scale as the streak grows.
+  // A small meditation bell for ring pickups, routed through the analyser so
+  // the world "hears" it too. Steps walk gently up a pentatonic scale as the
+  // streak grows. Volume follows this.chimeVolume (0..1, quiet by default).
   chime(step = 0) {
-    if (!this.ctx) return;
+    if (!this.ctx || this.chimeVolume <= 0) return;
     const ctx = this.ctx;
-    const scale = [0, 3, 5, 7, 10, 12, 15];
-    const f = 392 * Math.pow(2, scale[step % scale.length] / 12);
+    const scale = [0, 2, 4, 7, 9, 12]; // major pentatonic — calm, consonant
+    const f = 523.25 * Math.pow(2, scale[step % scale.length] / 12); // small bright bell
     const t0 = ctx.currentTime;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
-    g.connect(this.analyser);
-    // Slightly inharmonic partials -> small glass bell.
-    for (const [mul, amp] of [[1, 1], [2.01, 0.4], [2.99, 0.15]]) {
-      const o = ctx.createOscillator();
-      o.type = "sine";
-      o.frequency.value = f * mul;
-      const og = ctx.createGain();
-      og.gain.value = amp;
-      o.connect(og).connect(g);
-      o.start(t0);
-      o.stop(t0 + 1.2);
+    const peak = 0.4 * this.chimeVolume; // default 0.3 -> ~0.12, gentle
+
+    const out = ctx.createGain();
+    out.gain.value = 1;
+    out.connect(this.analyser);
+
+    // Real bells are inharmonic: partials at non-integer ratios, each with its
+    // own decay (higher partials quieter and shorter). Two voices per partial,
+    // a few cents apart, give the slow shimmering beat of a struck bowl.
+    const partials = [
+      { r: 1.0,  a: 1.0,  d: 3.4 },
+      { r: 2.76, a: 0.50, d: 2.4 },
+      { r: 5.40, a: 0.22, d: 1.5 },
+      { r: 8.93, a: 0.09, d: 0.9 },
+    ];
+    for (const p of partials) {
+      for (const cents of [-4, 4]) {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = f * p.r * Math.pow(2, cents / 1200);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(peak * p.a * 0.5, t0 + 0.006); // soft strike
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + p.d);             // long decay
+        o.connect(g).connect(out);
+        o.start(t0);
+        o.stop(t0 + p.d + 0.1);
+      }
     }
   }
 
