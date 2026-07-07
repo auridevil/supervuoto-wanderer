@@ -413,6 +413,12 @@ const trackParam = (() => {
 const trackUrl = resolveTrackUrl(trackParam);
 const trackIsDrive = /google\.com/.test(trackParam || "") || /^[A-Za-z0-9_-]{25,}$/.test((trackParam || "").trim());
 
+// A URL mix is already the track — hide the "load your own track" picker.
+if (trackUrl) {
+  document.getElementById("fileRow")?.style.setProperty("display", "none");
+  document.getElementById("padNote")?.style.setProperty("display", "none");
+}
+
 // Try reactive (CORS) first; fall back to play-only (no CORS, no analysis);
 // return "reactive" | "playonly" | null so start() can message the outcome.
 async function loadTrackUrl(url) {
