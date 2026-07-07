@@ -105,6 +105,32 @@
       .file-row label { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.05em; }
       .file-row input { color: var(--muted); font-size: 0.75rem; }
 
+      /* Loader — shown while a ?track= mix downloads; hides when ready. */
+      #loader {
+        inset: 0; z-index: 11; display: none;
+        flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem;
+        text-align: center; background: rgba(6,9,18,0.82); backdrop-filter: blur(5px);
+      }
+      #loader.show { display: flex; }
+      #loader .l-title {
+        letter-spacing: 0.3em; text-transform: uppercase; font-size: 0.78rem; color: var(--fg);
+      }
+      #loader .l-bar {
+        width: min(62vw, 320px); height: 4px; border-radius: 999px;
+        background: rgba(255,255,255,0.15); overflow: hidden;
+      }
+      #loader .l-fill {
+        height: 100%; width: 0%; border-radius: 999px;
+        background: linear-gradient(90deg, #9fe0ff, #c9b6ff, #ffd6a8);
+        transition: width 0.2s ease;
+      }
+      /* Indeterminate (no Content-Length / streaming): a sliding sliver. */
+      #loader.indeterminate .l-fill {
+        width: 38%; transition: none; animation: l-slide 1.1s ease-in-out infinite;
+      }
+      @keyframes l-slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+      #loader .l-pct { font-size: 0.72rem; letter-spacing: 0.08em; color: var(--muted); }
+
       /* HUD */
       #hud { left: 1.2rem; bottom: 1.1rem; font-size: 0.8rem; line-height: 1.7; color: var(--muted); }
       #hud b { color: var(--fg); font-weight: 500; }
@@ -293,6 +319,12 @@
         <input id="trackInput" type="file" accept="audio/*" />
       </div>
       <p style="font-size:0.72rem;opacity:0.6">No track loaded? A generative ambient pad plays so the world still moves.</p>
+    </div>
+
+    <div id="loader" class="ui">
+      <div class="l-title">loading your mix</div>
+      <div class="l-bar"><div class="l-fill" id="loaderFill"></div></div>
+      <div class="l-pct" id="loaderPct"></div>
     </div>
 
     <div id="reticle" class="ui hidden"></div>

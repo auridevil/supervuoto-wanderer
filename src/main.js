@@ -431,11 +431,57 @@ async function loadTrackUrl(url) {
   }
 }
 
-async function start() {
-  if (started) return;
-  started = true;
-  audio.unlock(); // synchronous, still inside the tap gesture — unlocks iOS audio
-  overlay.classList.add("hidden");
+// ---- loader (URL-track download progress) ----
+const loaderEl = document.getElementById("loader");
+const loaderFill = document.getElementById("loaderFill");
+const loaderPct = document.getElementById("loaderPct");
+const fmtMB = (b) => (b / 1048576).toFixed(1) + " MB";
+function showLoader() { if (loaderEl) { loaderEl.classList.add("show"); setLoaderProgress(0, 0, 0); } }
+function hideLoader() { if (loaderEl) loaderEl.classList.remove("show"); }
+function setLoaderProgress(frac, received = 0, total = 0) {
+  if (!loaderEl) return;
+  if (frac == null) { // unknown size / streaming — indeterminate sliver
+    loaderEl.classList.add("indeterminate");
+    if (loaderPct) loaderPct.textContent = received ? fmtMB(received) + " buffered…" : "buffering…";
+    return;
+  }
+  loaderEl.classList.remove("indeterminate");
+  const pct = Math.round(frac * 100);
+  if (loaderFill) loaderFill.style.width = pct + "%";
+  if (loaderPct) loaderPct.textContent = total ? `${pct}%  ·  ${fmtMB(received)} / ${fmtMB(total)}` : `${pct}%`;
+}
+
+// Download the whole mix with a progress bar (CORS hosts), then play it from a
+// blob — the file is fully ready, playback is gapless, and the analyser drives
+// the visuals. Non-CORS hosts can't be fetched, so fall back to streaming with
+// an indeterminate spinner until the element can play.
+async function loadTrackWithProgress(url, onProgress) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok || !resp.body) throw new Error("http " + resp.status);
+    const total = +(resp.headers.get("content-length") || 0);
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      onProgress(total ? received / total : null, received, total);
+    }
+    const blob = new Blob(chunks, { type: resp.headers.get("content-type") || "audio/mpeg" });
+    await audio.playFile(URL.createObjectURL(blob), { crossOrigin: null, analyse: true });
+    return "reactive";
+  } catch (e) {
+    console.warn("Progressive fetch failed, streaming instead:", e);
+    onProgress(null); // indeterminate while the media element buffers
+    return await loadTrackUrl(url);
+  }
+}
+
+// Reveal the in-world UI (HUD, settings, wayfinding, touch controls).
+function revealUI() {
   hud.classList.remove("hidden");
   panel.classList.remove("hidden");
   reticle.classList.remove("hidden");
@@ -444,15 +490,27 @@ async function start() {
     document.getElementById("touchLayer")?.classList.remove("hidden");
     document.getElementById("touchButtons")?.classList.remove("hidden");
   }
+}
+
+async function start() {
+  if (started) return;
+  started = true;
+  audio.unlock(); // synchronous, still inside the tap gesture — unlocks iOS audio
+  overlay.classList.add("hidden");
 
   await audio.resume();
   try {
     if (pendingFile) {
       // A user-picked local file is same-origin (object URL) — always reactive.
+      revealUI();
       await audio.playFile(pendingFile);
     } else if (trackUrl) {
-      // ?track= / ?gdrive= — load the mix by URL, with graceful fallbacks.
-      const mode = await loadTrackUrl(trackUrl);
+      // ?track= / ?gdrive= — show a loader while the mix downloads, then start
+      // the world only once the file is ready.
+      showLoader();
+      const mode = await loadTrackWithProgress(trackUrl, setLoaderProgress);
+      hideLoader();
+      revealUI();
       if (mode === "playonly") {
         flashWorldName("playing your track — visuals won't react (host sent no CORS headers)", 6000);
       } else if (!mode) {
@@ -466,18 +524,21 @@ async function start() {
       }
     } else {
       // Try a track shipped in /public, else fall back to the generative pad.
+      revealUI();
       const res = await fetch("music.mp3", { method: "HEAD" }).catch(() => null);
       if (res && res.ok) await audio.playFile("music.mp3");
       else audio.startPlaceholder();
     }
   } catch (err) {
     console.warn("Audio init failed, using placeholder:", err);
+    hideLoader();
+    revealUI();
     audio.startPlaceholder();
   }
 
   controls.lock();
   journey.begin();
-  if (demoParam) setDemo(true); // ?demo=1 — start in attract mode
+  if (demoParam) setDemo(true); // demo/attract by default (see demoParam)
 }
 
 overlay.addEventListener("click", start);
