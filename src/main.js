@@ -357,7 +357,7 @@ let pendingFile = null;
 if (IS_MOBILE) {
   document.getElementById("mobileNote")?.classList.add("show");
   const btn = overlay.querySelector(".start-btn");
-  if (btn) btn.textContent = "Tap to enter";
+  if (btn) btn.textContent = "Start your journey";
   document.body.classList.add("touch");
   controls.touchMode = true;
   new TouchControls(controls, {
