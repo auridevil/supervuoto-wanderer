@@ -226,6 +226,26 @@ export class PastelWorld {
       map: this.grain,
       emissive: new THREE.Color("#9fb0e0"), emissiveIntensity: 0.0,
     });
+    // Bass "heave": a gentle vertical breathing of the hills driven by sub/kick
+    // energy, done in the vertex shader (visual only — collision uses the CPU
+    // surfaceHeight, so walking is unaffected). Faded to ~0 near the flat path
+    // corridor (low ground) so the causeway stays flat; flatShading recomputes
+    // face normals from the displaced positions, so lighting follows for free.
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uHeave = { value: 0 };
+      shader.uniforms.uHeaveTime = { value: 0 };
+      shader.vertexShader = "uniform float uHeave;\nuniform float uHeaveTime;\n" + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+         vec3 wpH = (modelMatrix * vec4(position, 1.0)).xyz;
+         float hv = sin(wpH.x * 0.045 + uHeaveTime * 1.2) * cos(wpH.z * 0.05 - uHeaveTime * 0.9);
+         float heaveFade = smoothstep(2.0, ${(HEIGHT * 0.45).toFixed(2)}, wpH.y);
+         transformed.y += hv * uHeave * heaveFade * 0.5;`
+      );
+      this._terrainShader = shader;
+    };
+    mat.customProgramCacheKey = () => "pastel-terrain-heave";
     this._track(null, this.grain);
     this.terrain = new THREE.Mesh(geo, mat);
     scene.add(this.terrain);
@@ -999,9 +1019,16 @@ export class PastelWorld {
       .offsetHSL(tH2 * 0.14 - bands.bass * 0.12, Math.sin(elapsed * 0.045 + 1.0) * 0.08, Math.sin(elapsed * 0.04) * 0.05 + bands.level * 0.12 + beat * 0.08);
     // At full daylight, lift the sky-derived background so it doesn't read dim.
     if (this.scene.background) this.scene.background.copy(arc.skyBot).multiplyScalar(0.5 + this.sunrise * 0.35);
-    // Moon (sunLight) intensity + colour ramp across the arc, beat still kicks it.
-    this.sunLight.intensity = arc.moon + beat * 1.6 + bands.bass * 1.0;
+    // Moon (sunLight) intensity + colour ramp across the arc, beat still kicks it;
+    // deep sub energy adds a slow swell under the kick.
+    this.sunLight.intensity = arc.moon + beat * 1.6 + bands.bass * 1.0 + (bands.sub || 0) * 0.6;
     this.sunLight.color.copy(arc.moonCol);
+
+    // Bass heave: breathe the hills. sub drives the slow swell, the kick adds snap.
+    if (this._terrainShader) {
+      this._terrainShader.uniforms.uHeave.value = ((bands.sub || 0) * 0.8 + beat * 0.4) * fm;
+      this._terrainShader.uniforms.uHeaveTime.value = elapsed;
+    }
     // Daytime ambient lift (this.sunrise) so terrain isn't dark under the risen sun.
     this.hemi.intensity = (0.28 + night * 0.18 + this.sunrise * 0.5) + bands.level * 1.3 + beat * 0.7;
     this.scene.fog.color.copy(arc.fog);
@@ -1045,8 +1072,9 @@ export class PastelWorld {
       if (dz > half) pa[3 * i + 2] -= this.spread; else if (dz < -half) pa[3 * i + 2] += this.spread;
     }
     p.needsUpdate = true;
-    this.pmat.size = 0.4 + bands.treble * 3.5 + beat * 2.0 * fm;
-    this.pmat.opacity = (0.28 + night * 0.25) + bands.level * 0.7; // fireflies read brighter at night
+    // Treble sizes the fireflies; the airy top end adds a fine sparkle shimmer.
+    this.pmat.size = 0.4 + bands.treble * 3.5 + (bands.air || 0) * 2.0 + beat * 2.0 * fm;
+    this.pmat.opacity = (0.28 + night * 0.25) + bands.level * 0.7 + (bands.air || 0) * 0.2; // fireflies read brighter at night
 
     // --- scatter (wrap + reactive) ---
     for (const it of this.scatter) {

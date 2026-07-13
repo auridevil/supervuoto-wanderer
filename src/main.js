@@ -647,6 +647,7 @@ window.addEventListener("resize", () => {
 // ---- main loop ----
 setWorld("pastel");
 const clock = new THREE.Clock();
+let pump = 0; // smoothed kick energy -> a brief bloom + FOV pulse on the beat
 
 function animate() {
   requestAnimationFrame(animate);
@@ -654,6 +655,18 @@ function animate() {
   const elapsed = clock.elapsedTime;
   const bands = audio.update(dt);
   controls.update(dt);
+
+  // Beat pump: kicks briefly swell the bloom and nudge the FOV so the whole frame
+  // breathes with the music. Base values stay the user's settings; reduce-motion
+  // damps it right down. Ease toward the kick so it's a pulse, not a strobe.
+  const pumpFm = settings.reduceMotion ? 0.25 : 1;
+  pump += (audio.beat - pump) * Math.min(1, dt * 12);
+  if (settings.bloomOn) bloomPass.strength = settings.bloomStrength * (1 + pump * 0.6 * pumpFm);
+  const fovPump = pump * 2.5 * pumpFm;
+  if (Math.abs(camera.fov - (settings.fov + fovPump)) > 0.01) {
+    camera.fov = settings.fov + fovPump;
+    camera.updateProjectionMatrix();
+  }
 
   // Day/night arc: the Night Journey drives it — a true one-hour night that
   // ends in dawn, regardless of track length (guarded — not every world

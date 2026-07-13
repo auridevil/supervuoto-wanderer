@@ -6,9 +6,15 @@ export class AudioEngine {
     this.ctx = null;
     this.analyser = null;
     this.freq = null;
-    this.bands = { bass: 0, mid: 0, treble: 0, level: 0 };
-    this.beat = 0;            // decays after each detected kick
-    this._lastBass = 0;
+    // Five perceptual bands (0..1) + overall level. sub/air are new so different
+    // elements can react to different frequencies instead of everything tracking bass.
+    this.bands = { sub: 0, bass: 0, mid: 0, treble: 0, air: 0, level: 0 };
+    this.beat = 0;            // decays after each detected kick (low-flux onset)
+    this.hat = 0;             // decays after each detected hat/snare (high-flux onset)
+    this._agcMax = 0;         // rolling max loudness for adaptive gain
+    this._prevFreq = null;    // previous FFT frame, for spectral-flux onsets
+    this._fluxLowAvg = 0;     // rolling baselines the onsets are compared against
+    this._fluxHighAvg = 0;
     this.source = null;       // current node feeding the analyser
     this.audioEl = null;      // <audio> when a file is playing
     this.placeholderNodes = [];
@@ -21,7 +27,9 @@ export class AudioEngine {
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 2048;
-    this.analyser.smoothingTimeConstant = 0.8;
+    // Lower than the old 0.8 so transients survive the FFT — our own attack/
+    // release envelope (in update) does the shaping instead of the analyser.
+    this.analyser.smoothingTimeConstant = 0.6;
     this.freq = new Uint8Array(this.analyser.frequencyBinCount);
     this.wave = new Uint8Array(this.analyser.fftSize); // time-domain waveform
     this.master = this.ctx.createGain();
@@ -202,7 +210,7 @@ export class AudioEngine {
     this.placeholderNodes = [];
   }
 
-  // Call once per frame. Fills this.bands (0..1) and a decaying this.beat.
+  // Call once per frame. Fills this.bands (0..1) plus decaying this.beat/this.hat.
   update(dt) {
     if (!this.analyser) return this.bands;
     this.analyser.getByteFrequencyData(this.freq);
@@ -216,24 +224,58 @@ export class AudioEngine {
       return s / (hi - lo + 1) / 255;
     };
 
-    const k = 1 - Math.pow(0.001, dt); // frame-rate independent smoothing
-    // Boost + clamp so even a quietly-mixed track drives strong visuals.
-    const gain = 1.7;
-    const target = {
-      bass: Math.min(1, avg(20, 250) * gain),
-      mid: Math.min(1, avg(250, 2000) * gain),
-      treble: Math.min(1, avg(2000, 8000) * gain),
+    // Raw per-band energy (0..1), pre-gain. Five bands so visuals can react to
+    // distinct parts of the spectrum instead of all following the bass.
+    const raw = {
+      sub: avg(20, 80),
+      bass: avg(80, 250),
+      mid: avg(250, 2000),
+      treble: avg(2000, 8000),
+      air: avg(8000, 16000),
     };
-    target.level = (target.bass + target.mid + target.treble) / 3;
-    for (const key in target) {
-      this.bands[key] += (target[key] - this.bands[key]) * k;
-    }
+    const rawLevel = (raw.sub * 0.6 + raw.bass + raw.mid + raw.treble + raw.air * 0.6) / 4.2;
 
-    // Onset detection on the bass band -> beat impulse (sensitive).
-    const rise = this.bands.bass - this._lastBass;
-    if (rise > 0.025 && this.bands.bass > 0.3) this.beat = 1;
+    // --- Adaptive gain (AGC) ---
+    // Track a slowly-decaying max loudness and scale so the loudest recent moment
+    // maps to ~0.9. Quiet mixes get lifted, hot masters get tamed, and because all
+    // bands share one gain their relative dynamics are preserved.
+    this._agcMax = Math.max(rawLevel, this._agcMax * (1 - dt * 0.05)); // ~20 s memory
+    const gain = 0.9 / Math.max(this._agcMax, 0.06);                    // capped by the floor
+
+    // --- Attack / release envelopes ---
+    // Snap UP on a transient (punch), fall SLOWLY (graceful decay). This is the
+    // core fix for weak reactivity: symmetric smoothing used to kill every hit.
+    const attack = Math.min(1, dt * 30);
+    const release = Math.min(1, dt * 4.5);
+    const env = (cur, target) => cur + (target - cur) * (target > cur ? attack : release);
+    const b = this.bands;
+    for (const key in raw) b[key] = env(b[key], Math.min(1, raw[key] * gain));
+    b.level = env(b.level, Math.min(1, rawLevel * gain));
+
+    // --- Spectral-flux onset detection (kick + hat) ---
+    // The summed positive bin-to-bin rise in a band = newly-arrived energy = an
+    // onset. Compared against a rolling baseline so it adapts to the track rather
+    // than a fixed cutoff, and (being rise-based) it won't retrigger on a sustained
+    // note — only on the attack.
+    const prev = this._prevFreq || (this._prevFreq = new Uint8Array(this.freq.length));
+    const flux = (loHz, hiHz) => {
+      const lo = Math.max(1, Math.floor(loHz / binHz));
+      const hi = Math.min(this.freq.length - 1, Math.ceil(hiHz / binHz));
+      let s = 0;
+      for (let i = lo; i <= hi; i++) { const d = this.freq[i] - prev[i]; if (d > 0) s += d; }
+      return s / (hi - lo + 1) / 255;
+    };
+    const fluxLow = flux(40, 180);      // kick / low drum
+    const fluxHigh = flux(4000, 11000); // hats / snare snap
+    const fk = Math.min(1, dt * 3);     // baseline tracking rate
+    this._fluxLowAvg += (fluxLow - this._fluxLowAvg) * fk;
+    this._fluxHighAvg += (fluxHigh - this._fluxHighAvg) * fk;
+    prev.set(this.freq);
+
+    if (fluxLow > this._fluxLowAvg * 1.6 + 0.006 && b.bass > 0.12) this.beat = 1;
+    if (fluxHigh > this._fluxHighAvg * 1.8 + 0.004) this.hat = 1;
     this.beat *= Math.pow(0.02, dt); // decay
-    this._lastBass = this.bands.bass;
+    this.hat *= Math.pow(0.02, dt);
 
     return this.bands;
   }
