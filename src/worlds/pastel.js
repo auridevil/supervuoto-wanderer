@@ -1283,6 +1283,7 @@ export class PastelWorld {
     this.landmarks = [];
     this.landmarkGroup = new THREE.Group();
     this.landmarkInterval = 240;
+    this._litMonoliths = new Set(); // distinct waystones lit (keyed by lattice pos)
     const LC = 3;
     const plinthGeo = new THREE.BoxGeometry(2.4, 0.5, 2.4);
     const shaftGeo = new THREE.CylinderGeometry(0.42, 0.72, 6.2, 6);
@@ -1339,10 +1340,16 @@ export class PastelWorld {
       const inRange = dist < 20;
       if (inRange && !L.awakened) {
         L.awakened = true;
-        if (this.onLandmark) this.onLandmark(L.msg, 3200);
         this._fireRipple({ x: lx, z: lz });
+        // Count each distinct waystone once (keyed by its fixed lattice position),
+        // so re-approaching or a recycled instance never inflates the tally.
+        const key = Math.round(L.x / this.landmarkInterval);
+        if (!this._litMonoliths.has(key)) {
+          this._litMonoliths.add(key);
+          if (this.onLandmark) this.onLandmark(L.msg, 3200);
+        }
       }
-      if (dist > 30) L.awakened = false; // re-arm once you've clearly left
+      if (dist > 30) L.awakened = false; // re-arm the kindle visual once you've left
       L.lit += ((inRange ? 1 : 0) - L.lit) * Math.min(1, dt * 2.2); // gentle kindle / fade
 
       const lit = L.lit;
