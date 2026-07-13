@@ -78,8 +78,8 @@ blew out the bright/additive elements); the beat now gives a subtle FOV pulse on
 | **Instanced swaying grass** | ✅ | One `InstancedMesh` of low-poly blades on grassy, dry, off-path ground; recycled on wrap; sway in the vertex shader (wind + mid/beat). Count via `PERF.grass`. |
 | **Biome weather** | ✅ | Snowfall (snow biome), blowing sand (desert), faint mist (grass); opacity follows the biome mask under the walker; camera-anchored, only the active system loops. |
 | **Reactive constellations** | ✅ | Hand-authored star patterns on the dome; connecting lines + star size swell on musical peaks; night-gated like the field. |
+| **Responsive landmarks** | ✅ | Waystones spaced along the path (recycled); dormant/dark until you approach, then kindle — crystal glow + ground ring + light shaft + point light — and pulse with the music. Fires a toast on first kindle. Non-blocking. |
 | **Flocking fauna** | ⏳ | Birds/fish that drift and scatter on strong beats. |
-| **Responsive landmarks** | ⏳ | A shrine/monolith that lights when reached (stays goalless). |
 
 ## Cross-cutting
 

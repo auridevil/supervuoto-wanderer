@@ -104,6 +104,7 @@ function setWorld(key) {
   if ("waveWidth" in active) active.waveWidth = waveWidth;
   if ("reduceMotion" in active) active.reduceMotion = settings.reduceMotion;
   if ("onCollect" in active) active.onCollect = onRingCollected;
+  if ("onLandmark" in active) active.onLandmark = flashWorldName;
   flashWorldName(active.name);
 }
 

@@ -100,6 +100,7 @@ export class PastelWorld {
     this.reduceMotion = false; // photosensitivity: damp beat-driven flashes/strobes (main.js sets it)
     this.progress = 0;    // 0..1 journey position; main.js sets each frame -> day/night arc
     this.onCollect = null;  // called when the walker picks up a ring (Journey hooks this)
+    this.onLandmark = null; // called (text, ms) when a landmark first kindles near the walker
     this.auroraBoost = 0;   // extra aurora energy (Journey's aurora-storm event)
     this.sunrise = 0;       // 0..1 dawn finale: warms sky/fog/water, fades the night
     // Day/night keyframes: sunset -> deep-night -> dawn. Each holds base colors
@@ -182,6 +183,7 @@ export class PastelWorld {
     this._buildGrass(scene);
     this._buildWeather(scene);
     this._buildConstellations(scene);
+    this._buildLandmarks(scene);
   }
 
   _track(geo, matOrArr) {
@@ -1261,6 +1263,89 @@ export class PastelWorld {
     this.constLineMat.opacity = (0.05 + peak * 0.5) * vis;
   }
 
+  // ---------- Tier 3: responsive landmarks ----------
+  // Waystones spaced along the path, recycled as you travel. Each sits dormant &
+  // dark until you come near, then kindles: the crystal glows, a ground ring and
+  // a light shaft fade in, a point light warms the stone — and it pulses with the
+  // music while you're close. Purely optional discovery; nothing blocks you.
+  _buildLandmarks(scene) {
+    this.landmarks = [];
+    this.landmarkGroup = new THREE.Group();
+    this.landmarkInterval = 240;
+    const LC = 3;
+    const plinthGeo = new THREE.BoxGeometry(2.4, 0.5, 2.4);
+    const shaftGeo = new THREE.CylinderGeometry(0.42, 0.72, 6.2, 6);
+    const crystalGeo = new THREE.OctahedronGeometry(0.62, 0);
+    const ringGeo = new THREE.RingGeometry(1.6, 2.1, 40); ringGeo.rotateX(-Math.PI / 2);
+    const beamGeo = new THREE.CylinderGeometry(0.16, 0.16, 44, 8, 1, true);
+    const stone = new THREE.MeshStandardMaterial({ color: "#b8b2a4", roughness: 1, flatShading: true });
+    this._track(plinthGeo); this._track(shaftGeo); this._track(crystalGeo); this._track(ringGeo); this._track(beamGeo);
+    this._disp.push(stone);
+    const MSGS = [
+      "a waystone kindles as you approach",
+      "an old shrine remembers the light",
+      "the monolith glows for the wanderer",
+    ];
+    for (let i = 0; i < LC; i++) {
+      const g = new THREE.Group();
+      const plinth = new THREE.Mesh(plinthGeo, stone); plinth.position.y = 0.25; g.add(plinth);
+      const shaft = new THREE.Mesh(shaftGeo, stone); shaft.position.y = 3.35; g.add(shaft);
+      const cMat = new THREE.MeshStandardMaterial({ color: "#cfe6ff", emissive: new THREE.Color("#7fd6ff"), emissiveIntensity: 0, roughness: 0.3, metalness: 0.2, flatShading: true });
+      const crystal = new THREE.Mesh(crystalGeo, cMat); crystal.position.y = 6.9; g.add(crystal);
+      const oMat = new THREE.MeshBasicMaterial({ color: "#bfeaff", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+      const orb = new THREE.Mesh(crystalGeo, oMat); orb.position.y = 6.9; orb.scale.setScalar(1.7); g.add(orb);
+      const rMat = new THREE.MeshBasicMaterial({ color: "#8fd8ff", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(ringGeo, rMat); ring.position.y = 0.06; g.add(ring);
+      const bMat = new THREE.MeshBasicMaterial({ color: "#afe4ff", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const beam = new THREE.Mesh(beamGeo, bMat); beam.position.y = 6.9 + 22; g.add(beam);
+      const light = new THREE.PointLight("#9fe0ff", 0, 26); light.position.y = 6.9; g.add(light);
+      g.add(this._makeBlob(1.8));
+      this.landmarkGroup.add(g);
+      this._disp.push(cMat, oMat, rMat, bMat);
+      this.landmarks.push({
+        g, cMat, oMat, rMat, bMat, crystal, light,
+        x: (i - LC / 2) * this.landmarkInterval, side: i % 2 ? 1 : -1,
+        lit: 0, awakened: false, msg: MSGS[i % MSGS.length],
+      });
+    }
+    scene.add(this.landmarkGroup);
+    this.objects.push(this.landmarkGroup);
+  }
+
+  _updateLandmarks(cam, dt, elapsed, bands, beat, fm) {
+    if (!this.landmarks) return;
+    const span = this.landmarks.length * this.landmarkInterval, half = span / 2, off = 12;
+    for (const L of this.landmarks) {
+      // Recycle along the path; a recycled stone is a fresh, dormant one.
+      while (L.x < cam.x - half) { L.x += span; L.awakened = false; L.side = -L.side; }
+      while (L.x > cam.x + half) { L.x -= span; L.awakened = false; L.side = -L.side; }
+      const x = L.x, cz = pathZ(x), dz = pathDZ(x);
+      const inv = 1 / Math.hypot(dz, 1), px = -dz * inv, pz = inv; // perpendicular to the path
+      const lx = x + px * off * L.side, lz = cz + pz * off * L.side;
+      L.g.position.set(lx, this.surfaceHeight(lx, lz), lz);
+
+      const dist = Math.hypot(cam.x - lx, cam.z - lz);
+      const inRange = dist < 20;
+      if (inRange && !L.awakened) {
+        L.awakened = true;
+        if (this.onLandmark) this.onLandmark(L.msg, 3200);
+        this._fireRipple({ x: lx, z: lz });
+      }
+      if (dist > 30) L.awakened = false; // re-arm once you've clearly left
+      L.lit += ((inRange ? 1 : 0) - L.lit) * Math.min(1, dt * 2.2); // gentle kindle / fade
+
+      const lit = L.lit;
+      L.cMat.emissiveIntensity = lit * (0.9 + bands.bass * 1.1 + beat * 1.1 * fm);
+      L.crystal.rotation.y += dt * (0.3 + beat * 1.5 * fm);
+      L.crystal.scale.setScalar(0.9 + lit * 0.2 + beat * 0.15 * fm);
+      L.oMat.opacity = lit * (0.3 + bands.level * 0.22);
+      L.rMat.opacity = lit * (0.4 + beat * 0.3 * fm);
+      L.bMat.opacity = lit * (0.1 + bands.level * 0.14);
+      L.light.intensity = lit * (1.1 + beat * 0.9 * fm);
+      L.light.color.setHSL((0.55 + bands.treble * 0.08) % 1, 0.7, 0.7);
+    }
+  }
+
   _fireRipple(cam) {
     const r = this.ripples.find((x) => x.life <= 0);
     if (!r) return;
@@ -1393,6 +1478,7 @@ export class PastelWorld {
     this._updateGrass(cam, elapsed, bands, beat, fm);
     this._updateWeather(cam, dt, elapsed, bands);
     this._updateConstellations(cam, bands, beat, night);
+    this._updateLandmarks(cam, dt, elapsed, bands, beat, fm);
 
     // --- scatter (wrap + reactive) ---
     for (const it of this.scatter) {
