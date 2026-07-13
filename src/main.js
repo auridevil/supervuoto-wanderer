@@ -373,6 +373,13 @@ if (IS_MOBILE) {
   tap("tWorld", () => setWorld(active === worlds.pastel ? "plane" : "pastel"));
   tap("tPhoto", () => setPhotoMode(!photoMode));
   tap("tDemo", () => setDemo(!controls.demo));
+  // Help modal: ? opens it, tapping the backdrop or "Got it" dismisses it.
+  const helpEl = document.getElementById("help");
+  const openHelp = () => helpEl?.classList.add("show");
+  const closeHelp = () => helpEl?.classList.remove("show");
+  tap("tHelp", openHelp);
+  document.getElementById("helpClose")?.addEventListener("click", (e) => { e.stopPropagation(); closeHelp(); });
+  helpEl?.addEventListener("click", (e) => { if (e.target === helpEl) closeHelp(); });
   // iOS suspends the context / pauses the unmute element on interruptions;
   // nudge both back on touch and when returning to the tab.
   document.addEventListener("touchend", () => { if (started) audio.keepAlive(); }, { passive: true });
