@@ -58,12 +58,18 @@ function onRingCollected() {
   audio.chime(journey.rings - 1);
 }
 
-// A wonder was witnessed — a gentle sound, a toast, and a quiet tally. No profit.
-function onWonder(kind, text) {
-  flashWorldName(text, 3600);
-  journey.witnessWonder();
-  if (kind === "monastery") audio.bell();
-  else audio.chime(3);
+// A wonder responded. The payoff sound plays every time; the toast + quiet tally
+// happen only on the first encounter (`first`). No profit, ever.
+function onWonder(kind, text, first) {
+  if (first) { flashWorldName(text, 3600); journey.witnessWonder(); }
+  switch (kind) {
+    case "monastery": audio.bell(); break;
+    case "singing": audio.drone(); break;
+    case "well": audio.chime(1); break;
+    case "cairn": audio.chime(2); break;
+    case "door": audio.chime(0); break;
+    default: audio.chime(3);
+  }
 }
 
 // ---- wayfinding HUD chips ----

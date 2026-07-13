@@ -347,6 +347,29 @@ export class AudioEngine {
     }
   }
 
+  // A soft sustained drone chord (the singing stone), fading in then out over a
+  // few seconds, through the analyser so the world breathes with it.
+  drone() {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t0 = ctx.currentTime;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(0.28, t0 + 1.0);
+    out.gain.exponentialRampToValueAtTime(0.0001, t0 + 6.5);
+    out.connect(this.analyser);
+    const freqs = [146.83, 220, 277.18, 329.63]; // gentle open chord
+    for (const f of freqs) {
+      for (const d of [-4, 4]) {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = f * Math.pow(2, d / 1200);
+        const gg = ctx.createGain(); gg.gain.value = 0.2;
+        o.connect(gg).connect(out);
+        o.start(t0); o.stop(t0 + 6.8);
+      }
+    }
+  }
+
   // Playback position 0..1, drives the day/night arc.
   // File: real currentTime/duration. Generative pad: a virtual 3600s loop
   // keyed off the AudioContext clock so the sky still cycles with no track.

@@ -190,7 +190,7 @@ export class PastelWorld {
       surfaceHeight: (x, z) => this.surfaceHeight(x, z),
       heightAt: this.heightAt,
       desertMask, snowMask, pathZ, WATER_LEVEL,
-      onWonder: (k, t) => { if (this.onWonder) this.onWonder(k, t); },
+      onWonder: (k, t, f) => { if (this.onWonder) this.onWonder(k, t, f); },
     });
     this.wonders.reduceMotion = this.reduceMotion;
   }

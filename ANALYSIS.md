@@ -94,18 +94,29 @@ you travel (3 persistent groups, no streaming churn). Hooks: `onWonder(kind,text
 mobile ✦ button) rings interactable ones. Discovery = faint glow when near +
 occasional vague "◦ something nearby" chip.
 
-| Wonder | Interaction | Payoff | Status |
-|--------|-------------|--------|--------|
-| **Monastery** | press E / ✦ to ring the bell | deep bell through the analyser (world reacts), windows flare, bell swings | ✅ |
-| **Great Tree** | walk under the canopy | leaf shower + soft tone; canopy fireflies | ✅ |
-| **Waterfall** | stand in the mist | scrolling falls + spray + glowing pool + cool tone | ✅ |
+**13 wonders live** (`wonders.js`). Interact ones (E / ✦) fire their payoff every
+time but only count once; auto ones kindle when you reach them.
 
-**Next wonders to pour in** (each is a small builder in `wonders.js`): torii
-tunnel, moon pavilion, dry shipwreck, sleeping giant, field of bells, lighthouse,
-the lone door, the well, cairns, statue garden, fallen star, frozen lake, bridge
-to nowhere, lantern grove, observatory, hot spring, singing stone; plus fleeting
-encounters (fox guide, ghost pilgrim, prayer slip, kite) and the universal
-**Rest** verb (sit → sky time-lapse + haiku).
+| Wonder | Biome | Interaction | Payoff |
+|--------|-------|-------------|--------|
+| **Monastery** | grass/snow | ring the bell | deep bell (world reacts), windows flare, bell swings |
+| **Great Tree** | grass | walk under | leaf shower + tone; canopy fireflies |
+| **Waterfall** | grass | stand in mist | scrolling falls + spray + glowing pool + tone |
+| **Torii tunnel** | any | walk through | a light ripples gate-to-gate down the corridor |
+| **The lone door** | any | open it | door swings, a burst of moths, then just landscape |
+| **The well** | any | drop a stone | star-glints on the water, an expanding ripple, a splash |
+| **Cairn** | desert/snow | add a stone | the top stone rises, a chime |
+| **Lantern grove** | grass | walk through | paper lanterns kindle around you |
+| **Fallen star** | any | approach | a crater ember pulses like a slowing heartbeat |
+| **Singing stone** | any | touch it | a glowing seam flares + a low drone in the mix |
+| **Dry shipwreck** | desert | approach | a ship stranded in the dunes, sail stirring |
+| **Frozen lake** | snow | approach | mirror ice, glinting cracks, something beneath |
+| **Lighthouse** | any (low) | approach | a beam sweeps a sea that isn't there |
+
+**Still to add** (each a small builder): moon pavilion, sleeping giant, statue
+garden, bridge to nowhere, observatory, hot spring; fleeting encounters (fox
+guide, ghost pilgrim, prayer slip, kite); and the universal **Rest** verb
+(sit → sky time-lapse + haiku).
 
 ## Cross-cutting
 
