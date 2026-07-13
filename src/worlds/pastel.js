@@ -178,6 +178,7 @@ export class PastelWorld {
     this._buildClouds(scene);
     this._buildRipples(scene);
     this._buildStars(scene);
+    this._buildStarfield(scene);
   }
 
   _track(geo, matOrArr) {
@@ -234,6 +235,8 @@ export class PastelWorld {
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uHeave = { value: 0 };
       shader.uniforms.uHeaveTime = { value: 0 };
+      shader.uniforms.uRimColor = { value: new THREE.Color("#9fb4e6") };
+      shader.uniforms.uRimStrength = { value: 0.16 };
       shader.vertexShader = "uniform float uHeave;\nuniform float uHeaveTime;\n" + shader.vertexShader;
       shader.vertexShader = shader.vertexShader.replace(
         "#include <begin_vertex>",
@@ -242,6 +245,15 @@ export class PastelWorld {
          float hv = sin(wpH.x * 0.045 + uHeaveTime * 1.2) * cos(wpH.z * 0.05 - uHeaveTime * 0.9);
          float heaveFade = smoothstep(2.0, ${(HEIGHT * 0.45).toFixed(2)}, wpH.y);
          transformed.y += hv * uHeave * heaveFade * 0.5;`
+      );
+      // Moonlit fresnel rim: a cool edge glow at grazing angles so ridges read as
+      // sculpted silhouettes rather than flat facets.
+      shader.fragmentShader = "uniform vec3 uRimColor;\nuniform float uRimStrength;\n" + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <dithering_fragment>",
+        `#include <dithering_fragment>
+         float rim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.5);
+         gl_FragColor.rgb += uRimColor * rim * uRimStrength;`
       );
       this._terrainShader = shader;
     };
@@ -535,15 +547,26 @@ export class PastelWorld {
         shallow: { value: new THREE.Color("#2f6b6e") },
         deep: { value: new THREE.Color("#0c2330") },
         glow: { value: 0 },
+        moonDir: { value: new THREE.Vector3(0.5, 0.42, -0.76) },
+        moonCol: { value: new THREE.Color("#c6d2ff") },
       },
       vertexShader: `uniform vec3 cam; varying vec2 w;
         void main(){ w = position.xz + cam.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-      fragmentShader: `uniform float time, glow; uniform vec3 shallow, deep; uniform vec3 cam; varying vec2 w;
+      fragmentShader: `uniform float time, glow; uniform vec3 shallow, deep; uniform vec3 cam; uniform vec3 moonDir, moonCol; varying vec2 w;
         void main(){
           float waves = sin(w.x*0.25 + time*1.2) * 0.5 + sin(w.y*0.3 - time*0.9) * 0.5;
           float sparkle = pow(max(0.0, sin(w.x*1.7 + time*2.0) * sin(w.y*1.9 - time*1.7)), 8.0);
           vec3 c = mix(deep, shallow, waves * 0.5 + 0.5 + glow);
           c += sparkle * (0.6 + glow);
+          // caustic web — soft interlocking ripples of light under the surface
+          float ca = sin(w.x*0.5 + time*0.7) + sin(w.y*0.55 - time*0.6) + sin((w.x+w.y)*0.4 + time*0.9);
+          c += pow(max(0.0, ca*0.33), 3.0) * 0.2 * shallow;
+          // moonglade — a shimmering reflection streak along the moon's bearing
+          vec2 toFrag = normalize(w - cam.xz + 0.0001);
+          vec2 moonXZ = normalize(moonDir.xz + 0.0001);
+          float glade = pow(max(0.0, dot(toFrag, moonXZ)), 6.0);
+          glade *= 0.6 + 0.4 * sin(w.x*0.3 + w.y*0.3 + time*1.5);
+          c += glade * moonCol * 0.45;
           float dist = length(w - cam.xz);
           float fade = smoothstep(330.0, 80.0, dist);
           gl_FragColor = vec4(c, (0.72 + glow * 0.2) * fade);
@@ -585,10 +608,14 @@ export class PastelWorld {
         void main(){ w = position.xz + cam.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
       fragmentShader: `uniform float time, energy; uniform vec3 colA, colB; uniform vec3 cam; varying vec2 w;
         void main(){
-          float v = sin(w.x*0.01 + time*0.25 + sin(w.y*0.02)*2.0);
-          float a = pow(max(0.0, v), 3.0);
+          // Three overlapping curtains at different scales/drifts -> layered depth.
+          float c1 = pow(max(0.0, sin(w.x*0.010 + time*0.25 + sin(w.y*0.020)*2.0)), 3.0);
+          float c2 = pow(max(0.0, sin(w.x*0.017 - time*0.18 + sin(w.y*0.026 + 2.1)*2.0)), 4.0);
+          float c3 = pow(max(0.0, sin(w.x*0.026 + time*0.32 + sin(w.y*0.033 + 4.2)*1.6)), 5.0);
+          float a = c1*0.6 + c2*0.4 + c3*0.3;
           float fade = smoothstep(380.0, 120.0, length(w - cam.xz)); // softens far edges
           vec3 c = mix(colA, colB, 0.5 + 0.5*sin(time*0.12 + w.y*0.004));
+          c = mix(c, colB, c3); // the fine top band tips toward the cooler hue
           gl_FragColor = vec4(c, a * energy * fade);
         }`,
     });
@@ -942,6 +969,60 @@ export class PastelWorld {
     }
   }
 
+  // A persistent field of twinkling stars on a dome that follows the camera.
+  // Custom ShaderMaterial (so it's unfogged and each star twinkles on its own
+  // phase); treble/air drive a global shimmer, night/dawn drive visibility.
+  _buildStarfield(scene) {
+    const N = Math.round(1200 * PERF.scatter);
+    const pos = new Float32Array(N * 3);
+    const phase = new Float32Array(N);
+    const size = new Float32Array(N);
+    const R = 540; // inside the sky sphere (600), in front of the gradient
+    for (let i = 0; i < N; i++) {
+      const el = 0.05 + Math.random() * 1.45; // elevation above horizon (rad)
+      const az = Math.random() * Math.PI * 2;
+      const cr = Math.cos(el);
+      pos[3 * i] = Math.cos(az) * cr * R;
+      pos[3 * i + 1] = Math.sin(el) * R;
+      pos[3 * i + 2] = Math.sin(az) * cr * R;
+      phase[i] = Math.random() * Math.PI * 2;
+      size[i] = rand(1.0, 3.2);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("aPhase", new THREE.BufferAttribute(phase, 1));
+    geo.setAttribute("aSize", new THREE.BufferAttribute(size, 1));
+    this.starMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: {
+        time: { value: 0 }, uTwinkle: { value: 0 }, uVisible: { value: 1 },
+        uPixel: { value: Math.min(window.devicePixelRatio || 1, 2) },
+      },
+      vertexShader: `
+        attribute float aPhase; attribute float aSize;
+        uniform float time, uTwinkle, uPixel;
+        varying float vA;
+        void main(){
+          vA = 0.4 + 0.6 * sin(time * (0.6 + aPhase * 0.12) + aPhase); // per-star twinkle
+          gl_PointSize = aSize * uPixel * (0.8 + uTwinkle * 0.7);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        varying float vA; uniform float uVisible;
+        void main(){
+          float r = length(gl_PointCoord - 0.5);
+          if (r > 0.5) discard;
+          float soft = smoothstep(0.5, 0.0, r);
+          gl_FragColor = vec4(vec3(0.85, 0.9, 1.0), soft * max(vA, 0.0) * uVisible);
+        }`,
+    });
+    this.starfield = new THREE.Points(geo, this.starMat);
+    this.starfield.frustumCulled = false;
+    scene.add(this.starfield);
+    this.objects.push(this.starfield);
+    this._track(geo, this.starMat);
+  }
+
   // Streaks across the sky on strong beats.
   _buildStars(scene) {
     this.stars = [];
@@ -1024,10 +1105,19 @@ export class PastelWorld {
     this.sunLight.intensity = arc.moon + beat * 0.7 + bands.bass * 0.4 + (bands.sub || 0) * 0.25;
     this.sunLight.color.copy(arc.moonCol);
 
-    // Bass heave: breathe the hills. sub drives the slow swell, the kick adds snap.
+    // Bass heave + moonlit rim on the terrain shader (more rim at deep night).
     if (this._terrainShader) {
       this._terrainShader.uniforms.uHeave.value = ((bands.sub || 0) * 0.8 + beat * 0.4) * fm;
       this._terrainShader.uniforms.uHeaveTime.value = elapsed;
+      this._terrainShader.uniforms.uRimStrength.value = 0.14 + night * 0.16;
+    }
+
+    // Starfield: follow the camera, twinkle with the airy top end, fade at dawn.
+    if (this.starfield) {
+      this.starfield.position.copy(cam);
+      this.starMat.uniforms.time.value = elapsed;
+      this.starMat.uniforms.uTwinkle.value = (bands.air || 0) * 0.8 + bands.treble * 0.4;
+      this.starMat.uniforms.uVisible.value = THREE.MathUtils.clamp(0.15 + night * 0.9 - this.sunrise * 1.2, 0, 1);
     }
     // Daytime ambient lift (this.sunrise) so terrain isn't dark under the risen sun.
     this.hemi.intensity = (0.26 + night * 0.16 + this.sunrise * 0.45) + bands.level * 0.5 + beat * 0.3;
@@ -1053,6 +1143,8 @@ export class PastelWorld {
     this.waterMat.uniforms.glow.value = bands.level * 0.25 + beat * 0.2 * fm;
     this.waterMat.uniforms.shallow.value.copy(arc.waterSh); // day/night water tint
     this.waterMat.uniforms.deep.value.copy(arc.waterDp);
+    this.waterMat.uniforms.moonDir.value.copy(this.sunDir); // moonglade points at the moon
+    this.waterMat.uniforms.moonCol.value.copy(arc.moonCol);
 
     // --- aurora ---
     this.aurora.position.set(cam.x, 115, cam.z);

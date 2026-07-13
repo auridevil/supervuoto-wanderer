@@ -124,7 +124,7 @@ const settings = {
   levels: 26,
   grain: 0.55,
   bloomOn: true,
-  bloomStrength: 0.55,
+  bloomStrength: 0.2,
   chimeVolume: 0.18, // ring-pickup meditation bell (0..1), soft by default
 };
 // Mobile perf profile: bloom is the priciest pass, default it off on phones.

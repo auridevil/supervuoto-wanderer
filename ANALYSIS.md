@@ -54,18 +54,22 @@ Items 1–3 are the transformation; 4–6 add variety and drama.
 
 ---
 
-## Tier 2 — Magnificence (effects: cheap-ish, big wow)
+## Tier 2 — Magnificence (effects: cheap-ish, big wow)  ·  **MOSTLY SHIPPED**
 
-- **Persistent twinkling starfield** — *there is none today* (`_buildStars` only
-  makes beat streaks; the sky is a bare gradient). A point-cloud star dome
-  twinkling with `air`/treble is cheap and gorgeous. **Best wow-per-effort.**
-- **Moon god-rays / light shaft** — radial-blur volumetric pass from the moon
-  direction; pumps gently with `level`.
-- **Terrain rim-light** — a fresnel moonlit edge on ridges (custom terrain
-  `ShaderMaterial`); makes hills read as sculpted, not flat. Pairs with Tier 1 #6.
-- **Bloom pump + photo-mode depth-of-field** (DOF free while paused).
-- **Water upgrade** — reflected moon disc + reactive caustics in the water shader.
-- **Layered aurora curtains** — 2–3 offset planes for depth during the aurora event.
+Prioritized the items that add richness/beauty *without* adding brightness wash
+(the project's aesthetic is clean + moonlit, and glow was just dialed down).
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Twinkling starfield** | ✅ | New `_buildStarfield` — dome of per-star-phase twinkling points (custom unfogged shader); `air`/treble shimmer, fades at dawn. |
+| **Terrain rim-light** | ✅ | Moonlit fresnel edge injected into the terrain fragment shader; stronger at deep night. Sculpts ridges — supports the "clean" look. |
+| **Water upgrade** | ✅ | Moonglade reflection streak (points at the moon) + caustic web in the water shader. |
+| **Layered aurora curtains** | ✅ | Three overlapping curtain bands in one plane for depth. |
+| **Moon god-rays / light shaft** | ⏸ held | Deferred — light shafts risk exactly the wash just removed, and need an extra post pass. Opt-in later, gated low. |
+| **Photo-mode depth-of-field** | ⏸ held | Deferred — adds a `BokehPass` to the composer chain; lowest-priority Tier 2 item. |
+
+Note: the Tier 1 "bloom pump" was **removed** in the lighting-rebalance pass (it
+blew out the bright/additive elements); the beat now gives a subtle FOV pulse only.
 
 ## Tier 3 — Richer world / content
 
