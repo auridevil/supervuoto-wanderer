@@ -320,6 +320,33 @@ export class AudioEngine {
     }
   }
 
+  // A deep, long monastery bell (low D), routed through the analyser so the world
+  // reacts to it too. Same inharmonic-partials approach as chime(), tuned low.
+  bell() {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t0 = ctx.currentTime, f = 146.83; // low D
+    const out = ctx.createGain(); out.gain.value = 1; out.connect(this.analyser);
+    const partials = [
+      { r: 1.0, a: 1.0, d: 5.5 }, { r: 2.0, a: 0.5, d: 4.0 },
+      { r: 2.76, a: 0.4, d: 3.0 }, { r: 5.4, a: 0.15, d: 1.8 },
+    ];
+    const peak = 0.5;
+    for (const p of partials) {
+      for (const cents of [-3, 3]) {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = f * p.r * Math.pow(2, cents / 1200);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(peak * p.a * 0.5, t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + p.d);
+        o.connect(g).connect(out);
+        o.start(t0);
+        o.stop(t0 + p.d + 0.1);
+      }
+    }
+  }
+
   // Playback position 0..1, drives the day/night arc.
   // File: real currentTime/duration. Generative pad: a virtual 3600s loop
   // keyed off the AudioContext clock so the sky still cycles with no track.

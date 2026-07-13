@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { fbm } from "../noise.js";
 import { makeDesertKit, buildCactus, buildBones, makeSnowKit, buildPine, buildSnowBoulder } from "../props.js";
 import { PERF } from "../perf.js";
+import { Wonders } from "../wonders.js";
 
 const SIZE = 320;
 const SEG = PERF.terrainSeg;
@@ -101,6 +102,7 @@ export class PastelWorld {
     this.progress = 0;    // 0..1 journey position; main.js sets each frame -> day/night arc
     this.onCollect = null;  // called when the walker picks up a ring (Journey hooks this)
     this.onLandmark = null; // called (text, ms) when a landmark first kindles near the walker
+    this.onWonder = null;   // called (kind, text) when a wonder is first witnessed
     this.auroraBoost = 0;   // extra aurora energy (Journey's aurora-storm event)
     this.sunrise = 0;       // 0..1 dawn finale: warms sky/fog/water, fades the night
     // Day/night keyframes: sunset -> deep-night -> dawn. Each holds base colors
@@ -184,7 +186,19 @@ export class PastelWorld {
     this._buildWeather(scene);
     this._buildConstellations(scene);
     this._buildLandmarks(scene);
+    this.wonders = new Wonders(scene, {
+      surfaceHeight: (x, z) => this.surfaceHeight(x, z),
+      heightAt: this.heightAt,
+      desertMask, snowMask, pathZ, WATER_LEVEL,
+      onWonder: (k, t) => { if (this.onWonder) this.onWonder(k, t); },
+    });
+    this.wonders.reduceMotion = this.reduceMotion;
   }
+
+  // Interact (E / tap) — forwarded to the wonder nearest enough to respond.
+  interact() { if (this.wonders) this.wonders.interact(); }
+  get wonderPrompt() { return this.wonders ? this.wonders.prompt : null; }
+  get wonderHint() { return this.wonders ? this.wonders.hint : null; }
 
   _track(geo, matOrArr) {
     if (geo) this._disp.push(geo);
@@ -1479,6 +1493,7 @@ export class PastelWorld {
     this._updateWeather(cam, dt, elapsed, bands);
     this._updateConstellations(cam, bands, beat, night);
     this._updateLandmarks(cam, dt, elapsed, bands, beat, fm);
+    if (this.wonders) { this.wonders.reduceMotion = this.reduceMotion; this.wonders.update(dt, elapsed, bands, beat, cam, night, fm); }
 
     // --- scatter (wrap + reactive) ---
     for (const it of this.scatter) {
@@ -1564,6 +1579,7 @@ export class PastelWorld {
     // (lamp orbs, collectibles, foliage, mushroom caps, crystals, orbs, lanterns,
     // shrine roofs/finials, tower rings/caps). Every scene-added node lives in
     // this.objects. So removing all objects + disposing all _disp frees everything.
+    if (this.wonders) { this.wonders.dispose(scene); this.wonders = null; }
     for (const o of this.objects) scene.remove(o);
     for (const d of this._disp) { try { d.dispose(); } catch {} }
     this._disp = [];

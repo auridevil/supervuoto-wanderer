@@ -81,6 +81,32 @@ blew out the bright/additive elements); the beat now gives a subtle FOV pulse on
 | **Responsive landmarks** | ✅ | Waystones spaced along the path (recycled); dormant/dark until you approach, then kindle — crystal glow + ground ring + light shaft + point light — and pulse with the music. Fires a toast on first kindle. Non-blocking. |
 | **Flocking fauna** | ⏳ | Birds/fish that drift and scatter on strong beats. |
 
+## Tier 4 — Wonders (aimless mini-quests, no profit)  ·  **STARTED**
+
+Philosophy: *wonders, not quests.* Curiosity is rewarded with a moment (a sound,
+a light, falling leaves), never a prize.
+
+Architecture (`src/wonders.js`): each wonder type lives on its own **seeded**
+sparse jittered grid, so a gem has a fixed home in the infinite world (revisit →
+same gem). Only the nearest instance of each type is kept live & repositioned as
+you travel (3 persistent groups, no streaming churn). Hooks: `onWonder(kind,text)`
+→ toast + sound + a subtle `❖ wonders` tally in the stats chip; `interact()` (E /
+mobile ✦ button) rings interactable ones. Discovery = faint glow when near +
+occasional vague "◦ something nearby" chip.
+
+| Wonder | Interaction | Payoff | Status |
+|--------|-------------|--------|--------|
+| **Monastery** | press E / ✦ to ring the bell | deep bell through the analyser (world reacts), windows flare, bell swings | ✅ |
+| **Great Tree** | walk under the canopy | leaf shower + soft tone; canopy fireflies | ✅ |
+| **Waterfall** | stand in the mist | scrolling falls + spray + glowing pool + cool tone | ✅ |
+
+**Next wonders to pour in** (each is a small builder in `wonders.js`): torii
+tunnel, moon pavilion, dry shipwreck, sleeping giant, field of bells, lighthouse,
+the lone door, the well, cairns, statue garden, fallen star, frozen lake, bridge
+to nowhere, lantern grove, observatory, hot spring, singing stone; plus fleeting
+encounters (fox guide, ghost pilgrim, prayer slip, kite) and the universal
+**Rest** verb (sit → sky time-lapse + haiku).
+
 ## Cross-cutting
 
 - Everything gated by the `PERF` profile (`src/perf.js`) and `reduceMotion` —

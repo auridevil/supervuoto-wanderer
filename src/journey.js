@@ -28,6 +28,7 @@ export class Journey {
     this.started = false;
     this.t = 0;          // seconds walked since begin()
     this.rings = 0;      // collected along the path
+    this.wonders = 0;    // hidden gems witnessed (subtle tally, no profit)
     this.distance = 0;   // metres walked
     this.reduceMotion = false; // main.js keeps this in sync with settings
     this.toast = null;   // (text, ms) => void, set by main.js
@@ -88,6 +89,8 @@ export class Journey {
     this.rings++;
     if (!this.wisp) this._spawnWisp(); // the first ring calls the wisp early
   }
+
+  witnessWonder() { this.wonders++; }
 
   // ---------- companion wisp ----------
   _spawnWisp() {
@@ -443,7 +446,8 @@ export class Journey {
       const ss = String(s % 60).padStart(2, "0");
       const time = s >= 3600 ? `${Math.floor(s / 3600)}:${mm}:${ss}` : `${mm}:${ss}`;
       const km = (this.distance / 1000).toFixed(2);
-      this.statsEl.innerHTML = `<b>${time}</b> · ${km} km · ✦ <b>${this.rings}</b>`;
+      const wonders = this.wonders ? ` · ❖ <b>${this.wonders}</b>` : "";
+      this.statsEl.innerHTML = `<b>${time}</b> · ${km} km · ✦ <b>${this.rings}</b>${wonders}`;
     }
   }
 }
