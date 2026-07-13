@@ -600,7 +600,7 @@ function setDemo(on) {
     wizard.group.visible = true;
     flashWorldName("Demo — the traveler walks the line", 2600);
   } else {
-    flashWorldName("Demo off — you have the controls", 1600);
+    flashWorldName("Autopilot off — you have the control of your life", 2200);
   }
 }
 
