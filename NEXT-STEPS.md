@@ -67,6 +67,27 @@ The `wonders.js` system is built to scale — each new gem is one small builder.
 - **"Quiet mode"** `S` — one toggle that softens *everything* (reactivity, weather,
   events) for pure meditative walking.
 
+## H. Live & stage  · the wander as a VJ instrument
+Feed the visuals from a **live external audio source** so the world reacts to
+whatever's playing in the room — a DJ set, a band, a modular rig — projected
+behind the performance.
+- **External audio input** `M` — capture line-in / an audio-interface channel /
+  mic via `getUserMedia`, wire the `MediaStreamSource` into the analyser
+  **analyse-only (never to the speakers)** so there's no playback or feedback.
+  A start-screen option + a device picker (`enumerateDevices`) to choose the
+  input. The reactivity engine (AGC + spectral-flux onsets) already normalizes
+  arbitrary live signal, so it "just works" across quiet soundchecks and loud
+  sets. `?input=live` to boot straight into it.
+- **Performance / VJ mode** `S` — one toggle (or `?stage=1`) for fullscreen,
+  all HUD/reticle/chips hidden, demo/autopilot off, cursor hidden, screensaver
+  inhibited; optional world/seed lock so it doesn't wander off-look mid-set.
+- **Scene control** `M` — keyboard/MIDI hotkeys to nudge look live: switch world,
+  jump the day/night hour, trigger an aurora/meteor burst, bump bloom/exposure —
+  so a VJ can ride the visuals with the music.
+- **Output hygiene** `S` — a tiny input-level meter while arming (confirm signal
+  before going live), and a graceful "no input / permission denied" fallback to
+  the generative pad.
+
 ---
 
 ## Recommended near-term path
@@ -76,7 +97,10 @@ The `wonders.js` system is built to scale — each new gem is one small builder.
    needs; include the **singing stone** to tie wonders back to the audio work.
 3. **World seed + postcards** (C) — turns the wander into something shareable
    without a backend.
-4. **Spatial audio + a biome ambience bed** (D) — the biggest immersion jump left.
+4. **External live audio + VJ mode** (H) — high-impact and very feasible; the
+   reactivity engine already handles arbitrary live input, so it's mostly input
+   plumbing + a clean fullscreen output.
+5. **Spatial audio + a biome ambience bed** (D) — the biggest immersion jump left.
 
 Everything stays gated by `PERF` + `reduceMotion`, and nothing introduces a goal,
 a score, or a fail state. The point remains: walk, notice, feel — then keep walking.
