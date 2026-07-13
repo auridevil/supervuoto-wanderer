@@ -179,6 +179,9 @@ export class PastelWorld {
     this._buildRipples(scene);
     this._buildStars(scene);
     this._buildStarfield(scene);
+    this._buildGrass(scene);
+    this._buildWeather(scene);
+    this._buildConstellations(scene);
   }
 
   _track(geo, matOrArr) {
@@ -1040,6 +1043,224 @@ export class PastelWorld {
     }
   }
 
+  // ---------- Tier 3: instanced swaying grass ----------
+  // One InstancedMesh of low-poly blades scattered on grassy ground around the
+  // walker (recycled on wrap like the other props). Sway is done in the vertex
+  // shader (per-blade bend from wind + music), so per frame we only rewrite the
+  // matrices of blades that actually wrapped — the motion itself is free.
+  _buildGrass(scene) {
+    const N = PERF.grass;
+    const H = 0.62;
+    const geo = new THREE.PlaneGeometry(0.09, H, 1, 2);
+    geo.translate(0, H / 2, 0); // base at the origin, tip at +H
+    const cnt = geo.attributes.position.count;
+    const col = new Float32Array(cnt * 3);
+    const cbase = new THREE.Color("#356b3f"), ctip = new THREE.Color("#84b061");
+    for (let i = 0; i < cnt; i++) {
+      const y = geo.attributes.position.getY(i) / H;
+      tmp.copy(cbase).lerp(ctip, y);
+      col[3 * i] = tmp.r; col[3 * i + 1] = tmp.g; col[3 * i + 2] = tmp.b;
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uWindTime = { value: 0 };
+      shader.uniforms.uWindAmp = { value: 0.06 };
+      shader.vertexShader = "uniform float uWindTime;\nuniform float uWindAmp;\n" + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+         #ifdef USE_INSTANCING
+           vec3 gW = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+         #else
+           vec3 gW = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+         #endif
+         float gBend = clamp(position.y / ${H.toFixed(2)}, 0.0, 1.0); gBend *= gBend; // more at the tip
+         float gPh = gW.x * 0.12 + gW.z * 0.12;
+         float gSway = sin(uWindTime * 1.4 + gPh) * uWindAmp + sin(uWindTime * 2.3 + gPh * 1.7) * uWindAmp * 0.4;
+         transformed.x += gSway * gBend;
+         transformed.z += gSway * 0.4 * gBend;`
+      );
+      this._grassShader = shader;
+    };
+    mat.customProgramCacheKey = () => "pastel-grass-sway";
+    this.grass = new THREE.InstancedMesh(geo, mat, N);
+    this.grass.frustumCulled = false;
+    this.grassPatch = 90; // half-extent of the grass patch around the walker
+    this._grassData = [];
+    for (let i = 0; i < N; i++) this._grassData.push({ x: 0, z: 0, rot: Math.random() * Math.PI, s: rand(0.6, 1.35) });
+    this._grassInit = false;
+    scene.add(this.grass);
+    this.objects.push(this.grass);
+    this._track(geo, mat);
+  }
+
+  _updateGrass(cam, elapsed, bands, beat, fm) {
+    if (!this.grass) return;
+    const P = this.grassPatch, span = P * 2;
+    const d = this._grassDummy || (this._grassDummy = new THREE.Object3D());
+    let changed = false;
+    for (let i = 0; i < this._grassData.length; i++) {
+      const g = this._grassData[i];
+      let wrapped = false;
+      if (!this._grassInit) { g.x = cam.x + rand(-1, 1) * P; g.z = cam.z + rand(-1, 1) * P; wrapped = true; }
+      while (g.x - cam.x > P) { g.x -= span; wrapped = true; }
+      while (g.x - cam.x < -P) { g.x += span; wrapped = true; }
+      while (g.z - cam.z > P) { g.z -= span; wrapped = true; }
+      while (g.z - cam.z < -P) { g.z += span; wrapped = true; }
+      if (!wrapped) continue;
+      // Grass only on grassy, dry, off-path ground; otherwise park it below world.
+      const grassy = desertMask(g.x, g.z) < 0.4 && snowMask(g.x, g.z) < 0.4;
+      const offPath = Math.abs(g.z - pathZ(g.x)) > PATH_HALF + 1.0;
+      const h = this.surfaceHeight(g.x, g.z);
+      if (grassy && offPath && h > WATER_LEVEL + 0.3) {
+        d.position.set(g.x, h, g.z);
+        d.rotation.set(0, g.rot, 0);
+        d.scale.setScalar(g.s);
+      } else {
+        d.position.set(g.x, -1000, g.z);
+        d.scale.setScalar(0.0001);
+        d.rotation.set(0, 0, 0);
+      }
+      d.updateMatrix();
+      this.grass.setMatrixAt(i, d.matrix);
+      changed = true;
+    }
+    this._grassInit = true;
+    if (changed) this.grass.instanceMatrix.needsUpdate = true;
+    if (this._grassShader) {
+      this._grassShader.uniforms.uWindTime.value = elapsed;
+      this._grassShader.uniforms.uWindAmp.value = 0.05 + bands.mid * 0.12 + beat * 0.08 * fm;
+    }
+  }
+
+  // ---------- Tier 3: biome weather ----------
+  // Three camera-anchored particle systems whose opacity follows the biome under
+  // the walker: snowfall in the snow biome, blowing sand in the desert, a faint
+  // drifting mist over the grass. Only an active system runs its motion loop.
+  _buildWeather(scene) {
+    this._wxz = 60; // horizontal half-extent of the weather box
+    const mk = (n, color, size, yLo, yHi) => {
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        pos[3 * i] = rand(-1, 1) * this._wxz;
+        pos[3 * i + 1] = rand(yLo, yHi);
+        pos[3 * i + 2] = rand(-1, 1) * this._wxz;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      const mat = new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0, depthWrite: false });
+      const pts = new THREE.Points(geo, mat);
+      pts.frustumCulled = false;
+      scene.add(pts);
+      this.objects.push(pts);
+      this._track(geo, mat);
+      return { pts, mat, pos, op: 0 };
+    };
+    const sc = PERF.scatter;
+    this.weather = {
+      snow: mk(Math.round(700 * sc), "#eaf2ff", 0.3, 0, 42),
+      sand: mk(Math.round(500 * sc), "#d8bd82", 0.18, 0, 5),
+      mist: mk(Math.round(280 * sc), "#cfe0d8", 0.4, 0.5, 7),
+      _init: false,
+    };
+  }
+
+  _wrapXZ(a, i, cam) {
+    const W = this._wxz, S = W * 2;
+    if (a[i] - cam.x > W) a[i] -= S; else if (a[i] - cam.x < -W) a[i] += S;
+    if (a[i + 2] - cam.z > W) a[i + 2] -= S; else if (a[i + 2] - cam.z < -W) a[i + 2] += S;
+  }
+
+  _updateWeather(cam, dt, elapsed, bands) {
+    const wx = this.weather;
+    if (!wx) return;
+    const dm = desertMask(cam.x, cam.z), sm = snowMask(cam.x, cam.z);
+    const clear = THREE.MathUtils.clamp(1 - dm - sm, 0, 1);
+    if (!wx._init) { // first activation: recenter every system on the walker
+      for (const key of ["snow", "sand", "mist"]) {
+        const a = wx[key].pos;
+        for (let i = 0; i < a.length; i += 3) { a[i] = cam.x + rand(-1, 1) * this._wxz; a[i + 2] = cam.z + rand(-1, 1) * this._wxz; }
+        wx[key].pts.geometry.attributes.position.needsUpdate = true;
+      }
+      wx._init = true;
+    }
+    const ease = Math.min(1, dt * 1.5);
+    wx.snow.op += (sm * 0.85 - wx.snow.op) * ease;
+    wx.sand.op += (dm * 0.6 - wx.sand.op) * ease;
+    wx.mist.op += (clear * 0.28 - wx.mist.op) * ease;
+    wx.snow.mat.opacity = wx.snow.op; wx.sand.mat.opacity = wx.sand.op; wx.mist.mat.opacity = wx.mist.op;
+
+    const gy = this.heightAt(cam.x, cam.z);
+    if (wx.snow.op > 0.01) { // drifting fall, recycled to the top at the ground
+      const a = wx.snow.pos;
+      for (let i = 0; i < a.length; i += 3) {
+        a[i] += 1.2 * dt; a[i + 1] -= 5.0 * dt; a[i + 2] += Math.sin(elapsed * 0.6 + i) * 0.2 * dt;
+        if (a[i + 1] < gy) a[i + 1] = gy + 42;
+        this._wrapXZ(a, i, cam);
+      }
+      wx.snow.pts.geometry.attributes.position.needsUpdate = true;
+    }
+    if (wx.sand.op > 0.01) { // fast low horizontal blow (desert is flat -> fixed low band)
+      const a = wx.sand.pos;
+      for (let i = 0; i < a.length; i += 3) {
+        a[i] += 16 * dt; a[i + 2] += 4 * dt; a[i + 1] += Math.sin(elapsed * 2.0 + i) * 0.3 * dt;
+        this._wrapXZ(a, i, cam);
+      }
+      wx.sand.pts.geometry.attributes.position.needsUpdate = true;
+    }
+    if (wx.mist.op > 0.01) { // slow floating motes over the grass
+      const a = wx.mist.pos;
+      for (let i = 0; i < a.length; i += 3) {
+        a[i] += Math.sin(elapsed * 0.3 + i) * 0.3 * dt; a[i + 2] += Math.cos(elapsed * 0.25 + i) * 0.3 * dt;
+        this._wrapXZ(a, i, cam);
+      }
+      wx.mist.pts.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  // ---------- Tier 3: reactive constellations ----------
+  // A few hand-authored star patterns on the dome; their connecting lines and
+  // star size swell on musical peaks. Camera-anchored, night-gated like the field.
+  _buildConstellations(scene) {
+    const R = 536;
+    const xyz = (az, el) => { const cr = Math.cos(el); return [Math.cos(az) * cr * R, Math.sin(el) * R, Math.sin(az) * cr * R]; };
+    const CONSTS = [
+      { pts: [[0.6, 0.95], [0.72, 0.8], [0.66, 0.63], [0.82, 0.52], [0.52, 0.52], [0.66, 0.4]], edges: [0,1, 1,2, 2,3, 2,4, 2,5] },
+      { pts: [[2.4, 0.72], [2.72, 0.88], [2.95, 0.6]], edges: [0,1, 1,2, 2,0] },
+      { pts: [[4.15, 0.55], [4.4, 0.62], [4.62, 0.58], [4.85, 0.5], [4.9, 0.66], [4.66, 0.74], [4.42, 0.71]], edges: [0,1, 1,2, 2,3, 3,4, 4,5, 5,6, 6,3] },
+      { pts: [[5.4, 0.98], [5.62, 1.08], [5.88, 1.02], [6.08, 0.9]], edges: [0,1, 1,2, 2,3] },
+    ];
+    const starPos = [], linePos = [];
+    for (const c of CONSTS) {
+      const world = c.pts.map(([a, e]) => xyz(a, e));
+      for (const w of world) starPos.push(...w);
+      for (let k = 0; k < c.edges.length; k += 2) linePos.push(...world[c.edges[k]], ...world[c.edges[k + 1]]);
+    }
+    this.constGroup = new THREE.Group();
+    const sgeo = new THREE.BufferGeometry();
+    sgeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(starPos), 3));
+    this.constStarMat = new THREE.PointsMaterial({ color: "#dce6ff", size: 3, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
+    this.constGroup.add(new THREE.Points(sgeo, this.constStarMat));
+    const lgeo = new THREE.BufferGeometry();
+    lgeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(linePos), 3));
+    this.constLineMat = new THREE.LineBasicMaterial({ color: "#8fd8ff", transparent: true, opacity: 0.1, depthWrite: false, blending: THREE.AdditiveBlending });
+    this.constGroup.add(new THREE.LineSegments(lgeo, this.constLineMat));
+    scene.add(this.constGroup);
+    this.objects.push(this.constGroup);
+    this._track(sgeo, this.constStarMat); this._track(lgeo, this.constLineMat);
+  }
+
+  _updateConstellations(cam, bands, beat, night) {
+    if (!this.constGroup) return;
+    this.constGroup.position.copy(cam);
+    const vis = THREE.MathUtils.clamp(0.2 + night * 0.9 - this.sunrise * 1.2, 0, 1);
+    const peak = THREE.MathUtils.clamp(bands.level * 0.8 + beat * 0.6, 0, 1);
+    this.constStarMat.opacity = (0.4 + peak * 0.55) * vis;
+    this.constStarMat.size = 2.4 + peak * 3.2;
+    this.constLineMat.opacity = (0.05 + peak * 0.5) * vis;
+  }
+
   _fireRipple(cam) {
     const r = this.ripples.find((x) => x.life <= 0);
     if (!r) return;
@@ -1167,6 +1388,11 @@ export class PastelWorld {
     // Treble sizes the fireflies; the airy top end adds a fine sparkle shimmer.
     this.pmat.size = 0.4 + bands.treble * 2.0 + (bands.air || 0) * 1.2 + beat * 1.2 * fm;
     this.pmat.opacity = (0.24 + night * 0.2) + bands.level * 0.4 + (bands.air || 0) * 0.15; // fireflies read brighter at night
+
+    // --- grass / weather / constellations (Tier 3) ---
+    this._updateGrass(cam, elapsed, bands, beat, fm);
+    this._updateWeather(cam, dt, elapsed, bands);
+    this._updateConstellations(cam, bands, beat, night);
 
     // --- scatter (wrap + reactive) ---
     for (const it of this.scatter) {

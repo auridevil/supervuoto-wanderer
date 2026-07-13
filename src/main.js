@@ -324,6 +324,18 @@ if (settingsHead) {
   });
 }
 
+// Explicit "Done" button collapses the settings (mainly for touch). Uses the same
+// pointerup + movement threshold as the header, since iOS suppresses the synthetic
+// click when a tap inside the scrollable panel is read as a scroll-start.
+const settingsDone = document.getElementById("settingsDone");
+if (settingsDone) {
+  let dX = 0, dY = 0;
+  settingsDone.addEventListener("pointerdown", (e) => { dX = e.clientX; dY = e.clientY; });
+  settingsDone.addEventListener("pointerup", (e) => {
+    if (Math.hypot(e.clientX - dX, e.clientY - dY) < 10) panel.classList.add("collapsed");
+  });
+}
+
 // Push restored values into UI + engine. applyReduceMotion runs again after the
 // first world is created (setWorld) so the active world picks it up.
 setWaveWidth(settings.waveWidth);

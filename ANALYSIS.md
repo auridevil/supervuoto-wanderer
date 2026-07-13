@@ -71,16 +71,15 @@ Prioritized the items that add richness/beauty *without* adding brightness wash
 Note: the Tier 1 "bloom pump" was **removed** in the lighting-rebalance pass (it
 blew out the bright/additive elements); the beat now gives a subtle FOV pulse only.
 
-## Tier 3 — Richer world / content
+## Tier 3 — Richer world / content  ·  **1–3 SHIPPED**
 
-- **Instanced swaying grass/reeds** (GRAPHICS-PLAN Phase 2) — biggest "alive" jump.
-- **Biome weather** — snow in snow, blowing sand in desert, drizzle — tied to the
-  day/night arc.
-- **Flocking fauna** — birds (or fish over water) that drift and **scatter on
-  strong beats**.
-- **Reactive constellations** — a few star patterns that brighten/connect on peaks.
-- **Responsive landmarks** — a shrine/monolith that lights when reached (stays
-  goalless, adds discovery).
+| Item | Status | Notes |
+|------|--------|-------|
+| **Instanced swaying grass** | ✅ | One `InstancedMesh` of low-poly blades on grassy, dry, off-path ground; recycled on wrap; sway in the vertex shader (wind + mid/beat). Count via `PERF.grass`. |
+| **Biome weather** | ✅ | Snowfall (snow biome), blowing sand (desert), faint mist (grass); opacity follows the biome mask under the walker; camera-anchored, only the active system loops. |
+| **Reactive constellations** | ✅ | Hand-authored star patterns on the dome; connecting lines + star size swell on musical peaks; night-gated like the field. |
+| **Flocking fauna** | ⏳ | Birds/fish that drift and scatter on strong beats. |
+| **Responsive landmarks** | ⏳ | A shrine/monolith that lights when reached (stays goalless). |
 
 ## Cross-cutting
 
