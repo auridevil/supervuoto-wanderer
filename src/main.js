@@ -58,6 +58,12 @@ function onRingCollected() {
   audio.chime(journey.rings - 1);
 }
 
+// A waystone/monolith kindled on approach — toast + a running tally in the top bar.
+function onLandmark(text, ms) {
+  flashWorldName(text, ms);
+  journey.litMonolith();
+}
+
 // A wonder responded. The payoff sound plays every time; the toast + quiet tally
 // happen only on the first encounter (`first`). No profit, ever.
 function onWonder(kind, text, first) {
@@ -118,7 +124,7 @@ function setWorld(key) {
   if ("waveWidth" in active) active.waveWidth = waveWidth;
   if ("reduceMotion" in active) active.reduceMotion = settings.reduceMotion;
   if ("onCollect" in active) active.onCollect = onRingCollected;
-  if ("onLandmark" in active) active.onLandmark = flashWorldName;
+  if ("onLandmark" in active) active.onLandmark = onLandmark;
   if ("onWonder" in active) active.onWonder = onWonder;
   flashWorldName(active.name);
 }
@@ -378,10 +384,7 @@ const overlay = document.getElementById("overlay");
 const hud = document.getElementById("hud");
 const reticle = document.getElementById("reticle");
 const trackInput = document.getElementById("trackInput");
-const wonderPromptEl = document.getElementById("wonderPrompt");
-const wonderPromptText = document.getElementById("wonderPromptText");
 const wfWonderChip = document.getElementById("wf-wonder");
-const tInteractBtn = document.getElementById("tInteract");
 let started = false;
 let pendingFile = null;
 
@@ -405,7 +408,6 @@ if (IS_MOBILE) {
   tap("tWorld", () => setWorld(active === worlds.pastel ? "plane" : "pastel"));
   tap("tPhoto", () => setPhotoMode(!photoMode));
   tap("tDemo", () => setDemo(!controls.demo));
-  tap("tInteract", () => { if (active && typeof active.interact === "function") active.interact(); });
   // Help modal: ? opens it, tapping the backdrop or "Got it" dismisses it.
   const helpEl = document.getElementById("help");
   const openHelp = () => helpEl?.classList.add("show");
@@ -664,7 +666,6 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyV") toggleView();
   if (e.code === "KeyG") setDemo(!controls.demo);
   if (e.code === "KeyP") setPhotoMode(!photoMode);
-  if (e.code === "KeyE" && active && typeof active.interact === "function") active.interact();
   if (e.code === "BracketLeft") setWaveWidth(waveWidth - 0.2);
   if (e.code === "BracketRight") setWaveWidth(waveWidth + 0.2);
 });
@@ -715,13 +716,7 @@ function animate() {
   updateChip(wfDesert, wfDesertArrow, wfDesertDist, wf.desert);
   updateChip(wfSnow, wfSnowArrow, wfSnowDist, wf.snow);
 
-  // Wonders: interact prompt (in range) + occasional curiosity chip (gem nearby).
-  const wp = active.wonderPrompt || null;
-  if (wonderPromptEl) {
-    if (wp) { wonderPromptEl.classList.add("show"); if (wonderPromptText) wonderPromptText.textContent = wp; }
-    else wonderPromptEl.classList.remove("show");
-  }
-  if (tInteractBtn) tInteractBtn.classList.toggle("hidden", !wp);
+  // Wonders: occasional curiosity chip when a gem is nearby.
   if (wfWonderChip) wfWonderChip.classList.toggle("hidden", !active.wonderHint);
 
   active.update(dt, elapsed, bands, audio.beat, camera.position, audio.wave);

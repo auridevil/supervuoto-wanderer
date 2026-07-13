@@ -195,9 +195,6 @@ export class PastelWorld {
     this.wonders.reduceMotion = this.reduceMotion;
   }
 
-  // Interact (E / tap) — forwarded to the wonder nearest enough to respond.
-  interact() { if (this.wonders) this.wonders.interact(); }
-  get wonderPrompt() { return this.wonders ? this.wonders.prompt : null; }
   get wonderHint() { return this.wonders ? this.wonders.hint : null; }
 
   _track(geo, matOrArr) {

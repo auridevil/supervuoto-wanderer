@@ -25,9 +25,7 @@ export class Wonders {
     this.ctx = ctx;
     this.reduceMotion = false;
     this.witnessed = new Set();  // keys: "kind:ix,iz" — first-encounter memory (session)
-    this.prompt = null;          // interact prompt text when in range (or null)
     this.hint = null;            // truthy when the occasional curiosity chip should show
-    this._pendingInteract = false;
     this._hintCycle = 0;
     this._disp = [];
 
@@ -65,7 +63,7 @@ export class Wonders {
     this.objects = [];
     for (const t of this.types) {
       const inst = t.build();
-      inst.type = t; inst.cell = null; inst.near = 0; inst.payoff = 0; inst.witnessed = false;
+      inst.type = t; inst.cell = null; inst.near = 0; inst.payoff = 0; inst.armed = true;
       inst.group.visible = false;
       scene.add(inst.group);
       this.objects.push(inst.group);
@@ -398,14 +396,13 @@ export class Wonders {
 
   update(dt, elapsed, bands, beat, cam, night, fm) {
     const decay = Math.pow(0.2, dt);
-    this.prompt = null;
     let hintD = Infinity, hasHint = false;
 
     for (const t of this.types) {
       const inst = t.inst;
       const home = this._placeNearest(t, cam);
       if (!home) { inst.group.visible = false; continue; }
-      if (home.cell !== inst.cell) { inst.cell = home.cell; inst.witnessed = this.witnessed.has(t.kind + ":" + home.cell); }
+      if (home.cell !== inst.cell) { inst.cell = home.cell; inst.armed = true; }
       inst.group.visible = true;
       inst.group.position.set(home.wx, home.h, home.wz);
 
@@ -416,32 +413,26 @@ export class Wonders {
 
       const within = dist < t.nearR;
       const key = t.kind + ":" + home.cell;
-      if (!t.interact) {
-        // Auto wonders: kindle + count the first time you reach them.
-        if (within && !inst.witnessed) { inst.witnessed = true; this.witnessed.add(key); inst.payoff = 1; this.ctx.onWonder && this.ctx.onWonder(t.kind, t.msg, true); }
-      } else if (within) {
-        // Interactable: show the prompt; the key/tap fires the payoff every time,
-        // but only the first time counts (toast + tally).
-        this.prompt = t.prompt || "interact";
-        if (this._pendingInteract) {
-          inst.payoff = 1;
-          const first = !inst.witnessed;
-          if (first) { inst.witnessed = true; this.witnessed.add(key); }
-          this.ctx.onWonder && this.ctx.onWonder(t.kind, t.msg, first);
-        }
+      // Proximity trigger: coming close fires the payoff (every visit); it only
+      // counts the first time this gem is met. Re-arms once you've clearly left.
+      if (within && inst.armed) {
+        inst.armed = false;
+        inst.payoff = 1;
+        const first = !this.witnessed.has(key);
+        if (first) this.witnessed.add(key);
+        this.ctx.onWonder && this.ctx.onWonder(t.kind, t.msg, first);
+      } else if (dist > t.nearR * 1.7) {
+        inst.armed = true;
       }
 
       if (dist > 45 && dist < t.farR + 80 && dist < hintD) { hintD = dist; hasHint = true; }
       inst.apply({ dt, elapsed, bands, beat, near: inst.near, night, fm, payoff: inst.payoff });
     }
-    this._pendingInteract = false;
 
     // Occasional curiosity chip: visible ~8 s of every ~26 s while a gem is near.
     this._hintCycle += dt;
     this.hint = hasHint && (this._hintCycle % 26) < 8;
   }
-
-  interact() { this._pendingInteract = true; }
 
   dispose(scene) {
     for (const t of this.types) scene.remove(t.inst.group);
