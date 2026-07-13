@@ -33,7 +33,7 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 // Bloom — soft glow on bright/emissive pixels (lanterns, rings, crystals,
 // aurora, the waveform ribbon, the moon). Runs before the LOFI stylization.
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.5, 0.6);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.5, 0.72);
 composer.addPass(bloomPass);
 const lofiPass = new ShaderPass(LofiShader);
 composer.addPass(lofiPass);
@@ -124,7 +124,7 @@ const settings = {
   levels: 26,
   grain: 0.55,
   bloomOn: true,
-  bloomStrength: 0.8,
+  bloomStrength: 0.55,
   chimeVolume: 0.18, // ring-pickup meditation bell (0..1), soft by default
 };
 // Mobile perf profile: bloom is the priciest pass, default it off on phones.
@@ -656,13 +656,12 @@ function animate() {
   const bands = audio.update(dt);
   controls.update(dt);
 
-  // Beat pump: kicks briefly swell the bloom and nudge the FOV so the whole frame
-  // breathes with the music. Base values stay the user's settings; reduce-motion
-  // damps it right down. Ease toward the kick so it's a pulse, not a strobe.
+  // Beat pump: kicks give a subtle FOV nudge so the frame breathes with the music.
+  // (No bloom pump — it blew out the bright/additive elements.) Base FOV stays the
+  // user's setting; reduce-motion damps it; ease toward the kick so it's a pulse.
   const pumpFm = settings.reduceMotion ? 0.25 : 1;
   pump += (audio.beat - pump) * Math.min(1, dt * 12);
-  if (settings.bloomOn) bloomPass.strength = settings.bloomStrength * (1 + pump * 0.6 * pumpFm);
-  const fovPump = pump * 2.5 * pumpFm;
+  const fovPump = pump * 1.5 * pumpFm;
   if (Math.abs(camera.fov - (settings.fov + fovPump)) > 0.01) {
     camera.fov = settings.fov + fovPump;
     camera.updateProjectionMatrix();

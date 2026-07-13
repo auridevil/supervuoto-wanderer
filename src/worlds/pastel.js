@@ -458,8 +458,8 @@ export class PastelWorld {
       const lx = x + px * (hw + 0.9) * side, lz = cz + pz * (hw + 0.9) * side;
       l.g.position.set(lx, this.surfaceHeight(lx, lz), lz);
       l.mat.color.setHSL((0.1 + bands.mid * 0.1) % 1, 0.85, 0.62 + night * 0.08);
-      l.mat.opacity = (0.6 + night * 0.35) + bands.level * 0.3; // lanterns glow brighter at night
-      l.orb.scale.setScalar(1 + night * 0.15 + bands.bass * 0.8 + beat * 0.6 * fm);
+      l.mat.opacity = (0.5 + night * 0.28) + bands.level * 0.18; // lanterns glow brighter at night
+      l.orb.scale.setScalar(1 + night * 0.1 + bands.bass * 0.35 + beat * 0.3 * fm);
     }
 
     // Waveform: first compute the wiggling centre-curve, then extrude a ribbon.
@@ -489,7 +489,7 @@ export class PastelWorld {
     }
     wpos.needsUpdate = true;
     this.waveMat.color.setHSL((0.5 + bands.treble * 0.1) % 1, 0.9, 0.6 + beat * 0.15 * fm); // cohesive cyan
-    this.waveMat.opacity = 0.7 + bands.level * 0.3;
+    this.waveMat.opacity = 0.55 + bands.level * 0.2;
 
     // Is the player standing on the waveform ribbon? (-> the sage is "enlightened")
     const ci = THREE.MathUtils.clamp(Math.round(((cam.x - startX) / L) * (N - 1)), 0, N - 1);
@@ -1010,7 +1010,7 @@ export class PastelWorld {
 
     // --- global sky / light reaction (strong) ---
     this.skyMat.uniforms.time.value = elapsed;
-    this.skyMat.uniforms.glow.value = bands.level * 0.5 + beat * 0.3 * fm;
+    this.skyMat.uniforms.glow.value = bands.level * 0.3 + beat * 0.18 * fm;
     // Background base colours follow the arc, slowly drift, AND react to the music.
     const tH = Math.sin(elapsed * 0.035), tH2 = Math.sin(elapsed * 0.028 + 2.0);
     this.skyMat.uniforms.top.value.copy(arc.skyTop)
@@ -1021,7 +1021,7 @@ export class PastelWorld {
     if (this.scene.background) this.scene.background.copy(arc.skyBot).multiplyScalar(0.5 + this.sunrise * 0.35);
     // Moon (sunLight) intensity + colour ramp across the arc, beat still kicks it;
     // deep sub energy adds a slow swell under the kick.
-    this.sunLight.intensity = arc.moon + beat * 1.6 + bands.bass * 1.0 + (bands.sub || 0) * 0.6;
+    this.sunLight.intensity = arc.moon + beat * 0.7 + bands.bass * 0.4 + (bands.sub || 0) * 0.25;
     this.sunLight.color.copy(arc.moonCol);
 
     // Bass heave: breathe the hills. sub drives the slow swell, the kick adds snap.
@@ -1030,17 +1030,17 @@ export class PastelWorld {
       this._terrainShader.uniforms.uHeaveTime.value = elapsed;
     }
     // Daytime ambient lift (this.sunrise) so terrain isn't dark under the risen sun.
-    this.hemi.intensity = (0.28 + night * 0.18 + this.sunrise * 0.5) + bands.level * 1.3 + beat * 0.7;
+    this.hemi.intensity = (0.26 + night * 0.16 + this.sunrise * 0.45) + bands.level * 0.5 + beat * 0.3;
     this.scene.fog.color.copy(arc.fog);
     this.scene.fog.density = arc.fogD + bands.bass * 0.0065;
     // Hills get a subtle cool moonlit lift on the beat (no green wash).
-    this.terrain.material.emissiveIntensity = 0.1 + bands.bass * 0.3 + beat * 0.45 * fm;
+    this.terrain.material.emissiveIntensity = 0.06 + bands.bass * 0.15 + beat * 0.2 * fm;
 
     // --- sun ---
     this.sunGroup.position.copy(cam).addScaledVector(this.sunDir, 420);
-    const sunPulse = 1 + bands.level * 0.6 + beat * 0.6 * fm;
+    const sunPulse = 1 + bands.level * 0.3 + beat * 0.3 * fm;
     this.sunGroup.scale.setScalar(sunPulse);
-    this.sunGlow.opacity = 0.3 + bands.mid * 0.7 + beat * 0.5 * fm;
+    this.sunGlow.opacity = 0.25 + bands.mid * 0.35 + beat * 0.25 * fm;
     this.sunMat.color.setHSL((0.12 - bands.bass * 0.06 + 1) % 1, 0.6, 0.85 + beat * 0.1 * fm);
 
     // --- winding path + waveform ---
@@ -1058,7 +1058,7 @@ export class PastelWorld {
     this.aurora.position.set(cam.x, 115, cam.z);
     this.auroraMat.uniforms.time.value = elapsed;
     this.auroraMat.uniforms.cam.value.copy(cam);
-    this.auroraMat.uniforms.energy.value = (0.22 + night * 0.28) + this.auroraBoost + bands.mid * 1.3 + bands.treble * 0.9 + beat * 0.4 * fm;
+    this.auroraMat.uniforms.energy.value = (0.2 + night * 0.24) + this.auroraBoost + bands.mid * 0.7 + bands.treble * 0.5 + beat * 0.3 * fm;
     this.auroraMat.uniforms.colA.value.setHSL((0.38 + bands.bass * 0.12) % 1, 0.8, 0.55);  // green
     this.auroraMat.uniforms.colB.value.setHSL((0.52 + bands.treble * 0.15) % 1, 0.8, 0.55); // teal-cyan
 
@@ -1073,8 +1073,8 @@ export class PastelWorld {
     }
     p.needsUpdate = true;
     // Treble sizes the fireflies; the airy top end adds a fine sparkle shimmer.
-    this.pmat.size = 0.4 + bands.treble * 3.5 + (bands.air || 0) * 2.0 + beat * 2.0 * fm;
-    this.pmat.opacity = (0.28 + night * 0.25) + bands.level * 0.7 + (bands.air || 0) * 0.2; // fireflies read brighter at night
+    this.pmat.size = 0.4 + bands.treble * 2.0 + (bands.air || 0) * 1.2 + beat * 1.2 * fm;
+    this.pmat.opacity = (0.24 + night * 0.2) + bands.level * 0.4 + (bands.air || 0) * 0.15; // fireflies read brighter at night
 
     // --- scatter (wrap + reactive) ---
     for (const it of this.scatter) {
@@ -1091,13 +1091,13 @@ export class PastelWorld {
       }
 
       if (it.kind === "crystal") {
-        it.mat.emissiveIntensity = 0.4 + bands.bass * 3.8 + beat * 3 * fm;
+        it.mat.emissiveIntensity = 0.4 + bands.bass * 1.8 + beat * 1.4 * fm;
         o.rotation.y += dt * (0.5 + beat * 3 * fm);
         o.position.y = it.groundY + 0.6 + beat * 0.6 * fm;
       } else if (it.kind === "orb") {
         const bob = Math.sin(elapsed * 1.2 + it.phase) * 0.5;
         o.position.y = it.groundY + it.float + bob + beat * 0.8 * fm;
-        o.scale.setScalar(it.base * (1 + bands.treble * 1.5 + beat * 1.1 * fm));
+        o.scale.setScalar(it.base * (1 + bands.treble * 0.8 + beat * 0.6 * fm));
         it.mat.color.setHSL((it.hue + elapsed * 0.03) % 1, 0.85, 0.6 + bands.level * 0.25);
         it.mat.opacity = 0.7 + bands.level * 0.3;
       } else {
@@ -1116,8 +1116,8 @@ export class PastelWorld {
       if (dx > l.R) m.position.x -= l.R * 2; else if (dx < -l.R) m.position.x += l.R * 2;
       if (dz > l.R) m.position.z -= l.R * 2; else if (dz < -l.R) m.position.z += l.R * 2;
       m.position.y = l.alt + Math.sin(elapsed * 0.5 + l.phase) * 2;
-      m.scale.setScalar(l.base * (1 + night * 0.2 + bands.mid * 0.6 + beat * 0.5 * fm));
-      m.material.opacity = (0.6 + night * 0.35) + bands.mid * 0.3; // brighter at night
+      m.scale.setScalar(l.base * (1 + night * 0.15 + bands.mid * 0.35 + beat * 0.3 * fm));
+      m.material.opacity = (0.5 + night * 0.28) + bands.mid * 0.2; // brighter at night
     }
 
     // --- clouds ---
