@@ -32,6 +32,7 @@ export class Journey {
     this.monoliths = 0;  // waystones/monoliths lit on approach
     this.distance = 0;   // metres walked
     this.reduceMotion = false; // main.js keeps this in sync with settings
+    this.restBoost = 1;        // >1 while resting -> the day/night sky time-lapses
     this.toast = null;   // (text, ms) => void, set by main.js
     this.statsEl = document.getElementById("stats");
     this._statsAcc = 0;
@@ -394,7 +395,7 @@ export class Journey {
   // ---------- main tick ----------
   update(dt, elapsed, bands, beat, camera, controls, world) {
     if (!this.started) return;
-    this.t += dt * this.timeScale;
+    this.t += dt * this.timeScale * this.restBoost;
     this.distance += controls.currentSpeed * dt;
     const cam = camera.position;
 

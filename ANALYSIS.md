@@ -113,10 +113,13 @@ time but only count once; auto ones kindle when you reach them.
 | **Frozen lake** | snow | approach | mirror ice, glinting cracks, something beneath |
 | **Lighthouse** | any (low) | approach | a beam sweeps a sea that isn't there |
 
+**Rest verb** ✅ — press **R** / mobile ☾ to sit: chrome fades, the frame
+letterboxes, a haiku drifts up (`haiku.js`), and the sky **time-lapses**
+(`journey.restBoost`). Any movement rises you. Available anywhere.
+
 **Still to add** (each a small builder): moon pavilion, sleeping giant, statue
 garden, bridge to nowhere, observatory, hot spring; fleeting encounters (fox
-guide, ghost pilgrim, prayer slip, kite); and the universal **Rest** verb
-(sit → sky time-lapse + haiku).
+guide, ghost pilgrim, prayer slip, kite).
 
 ## Cross-cutting
 

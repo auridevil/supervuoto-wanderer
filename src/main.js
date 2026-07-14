@@ -13,6 +13,7 @@ import { Wizard } from "./character.js";
 import { LofiShader } from "./lofi.js";
 import { Wayfinding } from "./wayfinding.js";
 import { Journey } from "./journey.js";
+import { randomHaiku } from "./haiku.js";
 
 const app = document.getElementById("app");
 
@@ -385,6 +386,7 @@ const hud = document.getElementById("hud");
 const reticle = document.getElementById("reticle");
 const trackInput = document.getElementById("trackInput");
 const wfWonderChip = document.getElementById("wf-wonder");
+const restHaikuEl = document.getElementById("restHaiku");
 let started = false;
 let pendingFile = null;
 
@@ -408,6 +410,7 @@ if (IS_MOBILE) {
   tap("tWorld", () => setWorld(active === worlds.pastel ? "plane" : "pastel"));
   tap("tPhoto", () => setPhotoMode(!photoMode));
   tap("tDemo", () => setDemo(!controls.demo));
+  tap("tRest", () => setRest(!resting));
   // Help modal: ? opens it, tapping the backdrop or "Got it" dismisses it.
   const helpEl = document.getElementById("help");
   const openHelp = () => helpEl?.classList.add("show");
@@ -630,6 +633,23 @@ function setPhotoMode(on) {
   document.body.classList.toggle("photo", on);
 }
 
+// ---- rest ----
+// A contemplative pause: fade the chrome, letterbox in, a haiku drifts up, and
+// the sky time-lapses (journey.restBoost). Any movement rises you again.
+let resting = false;
+const restAnchor = new THREE.Vector3();
+function setRest(on) {
+  if (on === resting) return;
+  resting = on;
+  document.body.classList.toggle("rest", on);
+  journey.restBoost = on ? 15 : 1;
+  if (on) {
+    if (controls.demo) setDemo(false);          // sit still, not on autopilot
+    if (restHaikuEl) restHaikuEl.textContent = randomHaiku();
+    restAnchor.copy(controls.position);
+  }
+}
+
 function capturePhoto() {
   // Render one fresh frame so preserveDrawingBuffer holds the composed image,
   // then read the canvas back. The Capture button is hidden during photo mode's
@@ -666,6 +686,7 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyV") toggleView();
   if (e.code === "KeyG") setDemo(!controls.demo);
   if (e.code === "KeyP") setPhotoMode(!photoMode);
+  if (e.code === "KeyR") { setRest(!resting); return; }
   if (e.code === "BracketLeft") setWaveWidth(waveWidth - 0.2);
   if (e.code === "BracketRight") setWaveWidth(waveWidth + 0.2);
 });
@@ -690,6 +711,7 @@ function animate() {
   const elapsed = clock.elapsedTime;
   const bands = audio.update(dt);
   controls.update(dt);
+  if (resting && controls.position.distanceTo(restAnchor) > 0.4) setRest(false); // move to rise
 
   // Beat pump: kicks give a subtle FOV nudge so the frame breathes with the music.
   // (No bloom pump — it blew out the bright/additive elements.) Base FOV stays the

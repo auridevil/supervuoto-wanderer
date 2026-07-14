@@ -249,6 +249,44 @@
       body.photo #stats,
       body.photo #worldName { display: none !important; }
 
+      /* Rest — a contemplative hush: fade the chrome, letterbox in, a haiku drifts
+         up, the sky time-lapses. Any movement rises you again. */
+      body.rest #hud,
+      body.rest #panel,
+      body.rest #reticle,
+      body.rest #wayfind,
+      body.rest #stats,
+      body.rest #worldName,
+      body.rest #touchButtons { display: none !important; }
+      #rest {
+        inset: 0; z-index: 8; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center;
+        opacity: 0; transition: opacity 1.4s ease; pointer-events: none;
+        background: radial-gradient(120% 120% at 50% 50%, transparent 42%, rgba(4,6,12,0.66) 100%);
+      }
+      body.rest #rest { opacity: 1; }
+      #rest::before, #rest::after {
+        content: ""; position: absolute; left: 0; right: 0; height: 12vh;
+        background: rgba(4,6,12,0.82); transform: scaleY(0); transition: transform 1.2s ease;
+      }
+      #rest::before { top: 0; transform-origin: top; }
+      #rest::after { bottom: 0; transform-origin: bottom; }
+      body.rest #rest::before, body.rest #rest::after { transform: scaleY(1); }
+      #rest .rest-haiku {
+        position: relative; white-space: pre-line;
+        color: rgba(255,255,255,0.92); font-weight: 300;
+        font-size: clamp(1.1rem, 3.2vw, 1.8rem); line-height: 2; letter-spacing: 0.06em;
+        text-shadow: 0 2px 30px rgba(0,0,0,0.6);
+        opacity: 0; transition: opacity 2s ease 0.6s;
+      }
+      body.rest #rest .rest-haiku { opacity: 1; }
+      #rest .rest-hint {
+        position: relative; margin-top: 2.4rem; color: var(--muted);
+        font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase;
+        opacity: 0; transition: opacity 1.5s ease 1.8s;
+      }
+      body.rest #rest .rest-hint { opacity: 0.6; }
+
       /* Capture bar — only visible while in photo mode. */
       #photoBar {
         bottom: 1.4rem; left: 50%; transform: translateX(-50%);
@@ -402,6 +440,10 @@
 
     <div id="reticle" class="ui hidden"></div>
     <div id="worldName" class="ui"></div>
+    <div id="rest" class="ui">
+      <div class="rest-haiku" id="restHaiku"></div>
+      <div class="rest-hint">move to rise</div>
+    </div>
     <div id="stats" class="ui hidden"></div>
     <div id="wayfind" class="ui hidden">
       <div id="wf-desert" class="wf-chip">
@@ -468,7 +510,7 @@
     </div>
     <div id="hud" class="ui hidden">
       <div><b>WASD</b> / arrows — walk &nbsp;·&nbsp; <b>mouse</b> — look &nbsp;·&nbsp; <b>space</b> — jump &nbsp;·&nbsp; <b>shift</b> — stroll (slow)</div>
-      <div><b>1</b> moonlit hills &nbsp;·&nbsp; <b>2</b> infinite plane &nbsp;·&nbsp; <b>V</b> third-person sage &nbsp;·&nbsp; <b>G</b> demo (walk the line) &nbsp;·&nbsp; <b>P</b> photo mode &nbsp;·&nbsp; <b>esc</b> release mouse</div>
+      <div><b>1</b> moonlit hills &nbsp;·&nbsp; <b>2</b> infinite plane &nbsp;·&nbsp; <b>V</b> third-person sage &nbsp;·&nbsp; <b>R</b> rest &nbsp;·&nbsp; <b>G</b> demo (walk the line) &nbsp;·&nbsp; <b>P</b> photo mode &nbsp;·&nbsp; <b>esc</b> release mouse</div>
     </div>
 
     <div id="photoBar" class="ui">
@@ -481,6 +523,7 @@
     <div id="touchLayer" class="ui hidden"></div>
     <div id="joy"><div id="joyStick"></div></div>
     <div id="touchButtons" class="ui hidden">
+      <button class="tbtn" id="tRest" type="button" aria-label="Rest">☾</button>
       <button class="tbtn" id="tHelp" type="button" aria-label="How to play">?</button>
       <button class="tbtn" id="tDemo" type="button" aria-label="Demo mode">▶</button>
       <button class="tbtn" id="tPhoto" type="button" aria-label="Photo mode">📷</button>
@@ -499,6 +542,7 @@
         <div class="help-row"><span class="g">👁</span><span><b>View</b> — switch first / third person.</span></div>
         <div class="help-row"><span class="g">🌐</span><span><b>World</b> — moonlit hills ⇄ infinite plane.</span></div>
         <div class="help-row"><span class="g">✦</span><span><b>Wonders</b> — just walk close to a bell, a shrine, a tree; it responds on its own.</span></div>
+        <div class="help-row"><span class="g">☾</span><span><b>Rest</b> — sit and be still; a haiku, and the sky drifts. Move to rise.</span></div>
         <div class="help-row"><span class="g">▶</span><span><b>Demo</b> — let the traveler walk the line for you.</span></div>
         <div class="help-row"><span class="g">📷</span><span><b>Photo</b> — hide the UI and capture the view.</span></div>
         <div class="help-foot">Headphones recommended. There's no goal — just wander.</div>
