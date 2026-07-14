@@ -35,9 +35,10 @@ The `wonders.js` system is built to scale — each new gem is one small builder.
   backend). Presence without interaction.
 
 ## D. Sound as a place  · deepen immersion
-- **Spatial audio** `M` — position waterfalls, bells, lanterns in a stereo/HRTF
-  field so you *hear* where a wonder is before you see it (pairs with the
-  curiosity chip). Uses `PannerNode`.
+- **Spatial audio** ✅ (base) — the listener now tracks the camera, and world
+  one-shots (bell, chime, drone) route through an HRTF `PannerNode` at the
+  source's world position, so you *hear* which side a wonder is on. *Still to do:
+  positioned ambient loops (water/wind) — needs the ambience beds below.*
 - **Biome ambience beds** `M` — a low wind in the snow, cicada-shimmer in the
   desert, water lapping near lakes — filtered by the day/night arc, layered under
   the music (or under the generative pad).

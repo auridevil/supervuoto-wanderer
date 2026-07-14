@@ -79,7 +79,7 @@ blew out the bright/additive elements); the beat now gives a subtle FOV pulse on
 | **Biome weather** | ✅ | Snowfall (snow biome), blowing sand (desert), faint mist (grass); opacity follows the biome mask under the walker; camera-anchored, only the active system loops. |
 | **Reactive constellations** | ✅ | Hand-authored star patterns on the dome; connecting lines + star size swell on musical peaks; night-gated like the field. |
 | **Responsive landmarks** | ✅ | Waystones spaced along the path (recycled); dormant/dark until you approach, then kindle — crystal glow + ground ring + light shaft + point light — and pulse with the music. Fires a toast on first kindle. Non-blocking. |
-| **Flocking fauna** | ⏳ | Birds/fish that drift and scatter on strong beats. |
+| **Flocking fauna** | ✅ | `fauna.js` — a boids-lite flock of chevron birds (wings flap in the vertex shader) orbiting overhead; **scatters outward on strong beats**, then reforms. `PERF.fauna` count; reduce-motion damps the scatter. |
 
 ## Tier 4 — Wonders (aimless mini-quests, no profit)  ·  **STARTED**
 

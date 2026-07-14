@@ -540,7 +540,7 @@ export class Wonders {
         inst.payoff = 1;
         const first = !this.witnessed.has(key);
         if (first) this.witnessed.add(key);
-        this.ctx.onWonder && this.ctx.onWonder(t.kind, t.msg, first);
+        this.ctx.onWonder && this.ctx.onWonder(t.kind, t.msg, first, { x: home.wx, y: home.h + 1.5, z: home.wz });
       } else if (dist > t.nearR * 1.7) {
         inst.armed = true;
       }

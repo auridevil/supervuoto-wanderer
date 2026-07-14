@@ -4,6 +4,7 @@ import { makeDesertKit, buildCactus, buildBones, makeSnowKit, buildPine, buildSn
 import { PERF } from "../perf.js";
 import { Wonders } from "../wonders.js";
 import { Encounters } from "../encounters.js";
+import { Flock } from "../fauna.js";
 
 const SIZE = 320;
 const SEG = PERF.terrainSeg;
@@ -194,7 +195,7 @@ export class PastelWorld {
       surfaceHeight: (x, z) => this.surfaceHeight(x, z),
       heightAt: this.heightAt,
       desertMask, snowMask, pathZ, WATER_LEVEL,
-      onWonder: (k, t, f) => { if (this.onWonder) this.onWonder(k, t, f); },
+      onWonder: (k, t, f, p) => { if (this.onWonder) this.onWonder(k, t, f, p); },
     });
     this.wonders.reduceMotion = this.reduceMotion;
     this.encounters = new Encounters(scene, {
@@ -202,6 +203,7 @@ export class PastelWorld {
       pathZ,
       onToast: (t, ms) => { if (this.onToast) this.onToast(t, ms); },
     });
+    this.flock = new Flock(scene);
   }
 
   get wonderHint() { return this.wonders ? this.wonders.hint : null; }
@@ -1514,6 +1516,7 @@ export class PastelWorld {
     if (Math.hypot(_hx, _hz) > 0.001) this._heading.set(_hx, 0, _hz).normalize();
     this._camPrev.copy(cam);
     if (this.encounters) this.encounters.update(dt, elapsed, cam, this._heading, bands, beat);
+    if (this.flock) { this.flock.reduceMotion = this.reduceMotion; this.flock.update(dt, elapsed, cam, beat); }
 
     // --- scatter (wrap + reactive) ---
     for (const it of this.scatter) {
@@ -1601,6 +1604,7 @@ export class PastelWorld {
     // this.objects. So removing all objects + disposing all _disp frees everything.
     if (this.wonders) { this.wonders.dispose(scene); this.wonders = null; }
     if (this.encounters) { this.encounters.dispose(scene); this.encounters = null; }
+    if (this.flock) { this.flock.dispose(scene); this.flock = null; }
     for (const o of this.objects) scene.remove(o);
     for (const d of this._disp) { try { d.dispose(); } catch {} }
     this._disp = [];

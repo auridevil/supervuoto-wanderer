@@ -67,15 +67,15 @@ function onLandmark(text, ms) {
 
 // A wonder responded. The payoff sound plays every time; the toast + quiet tally
 // happen only on the first encounter (`first`). No profit, ever.
-function onWonder(kind, text, first) {
+function onWonder(kind, text, first, pos) {
   if (first) { flashWorldName(text, 3600); journey.witnessWonder(); }
   switch (kind) {
-    case "monastery": audio.bell(); break;
-    case "singing": case "giant": audio.drone(); break;
-    case "well": audio.chime(1); break;
-    case "cairn": audio.chime(2); break;
-    case "door": audio.chime(0); break;
-    default: audio.chime(3);
+    case "monastery": audio.bell(pos); break;
+    case "singing": case "giant": audio.drone(pos); break;
+    case "well": audio.chime(1, pos); break;
+    case "cairn": audio.chime(2, pos); break;
+    case "door": audio.chime(0, pos); break;
+    default: audio.chime(3, pos);
   }
 }
 
@@ -705,6 +705,7 @@ window.addEventListener("resize", () => {
 setWorld("pastel");
 const clock = new THREE.Clock();
 let pump = 0; // smoothed kick energy -> a brief bloom + FOV pulse on the beat
+const _fwd = new THREE.Vector3(); // camera forward, for the spatial-audio listener
 
 function animate() {
   requestAnimationFrame(animate);
@@ -747,6 +748,10 @@ function animate() {
     wizard.update(dt, elapsed, controls.position, controls.groundY, controls.yaw,
       controls.currentSpeed, controls.velocity, bands, audio.beat, controls.jumpOffset, active.onWave || 0, active.flash || 0);
   }
+  // Spatial audio: move the listener with the camera so world sounds pan.
+  camera.getWorldDirection(_fwd);
+  audio.setListener(camera.position.x, camera.position.y, camera.position.z, _fwd.x, _fwd.y, _fwd.z, 0, 1, 0);
+
   lofiPass.uniforms.time.value = elapsed;
   composer.render();
 }

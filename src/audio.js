@@ -280,10 +280,39 @@ export class AudioEngine {
     return this.bands;
   }
 
+  // ---- spatial audio ----
+  // Set an AudioParam if present (modern), else fall back to the deprecated
+  // setter (older Safari). Used for both the listener and each panner.
+  _setXYZ(node, kind, x, y, z) {
+    if (node[kind + "X"]) { node[kind + "X"].value = x; node[kind + "Y"].value = y; node[kind + "Z"].value = z; return true; }
+    return false;
+  }
+
+  // Camera → listener each frame, so positional world sounds pan correctly.
+  setListener(px, py, pz, fx, fy, fz, ux, uy, uz) {
+    const l = this.ctx && this.ctx.listener;
+    if (!l) return;
+    if (!this._setXYZ(l, "position", px, py, pz)) { if (l.setPosition) l.setPosition(px, py, pz); }
+    if (l.forwardX) { l.forwardX.value = fx; l.forwardY.value = fy; l.forwardZ.value = fz; l.upX.value = ux; l.upY.value = uy; l.upZ.value = uz; }
+    else if (l.setOrientation) l.setOrientation(fx, fy, fz, ux, uy, uz);
+  }
+
+  // Node a one-shot connects into: a positioned PannerNode when pos is given
+  // (so you hear where it is), otherwise straight to the analyser (centred).
+  _spatialDest(pos) {
+    if (!pos) return this.analyser;
+    const p = this.ctx.createPanner();
+    p.panningModel = "HRTF"; p.distanceModel = "inverse";
+    p.refDistance = 6; p.maxDistance = 180; p.rolloffFactor = 1.0;
+    if (!this._setXYZ(p, "position", pos.x, pos.y, pos.z)) { if (p.setPosition) p.setPosition(pos.x, pos.y, pos.z); }
+    p.connect(this.analyser);
+    return p;
+  }
+
   // A small meditation bell for ring pickups, routed through the analyser so
   // the world "hears" it too. Steps walk gently up a pentatonic scale as the
   // streak grows. Volume follows this.chimeVolume (0..1, quiet by default).
-  chime(step = 0) {
+  chime(step = 0, pos = null) {
     if (!this.ctx || this.chimeVolume <= 0) return;
     const ctx = this.ctx;
     const scale = [0, 2, 4, 7, 9, 12]; // major pentatonic — calm, consonant
@@ -293,7 +322,7 @@ export class AudioEngine {
 
     const out = ctx.createGain();
     out.gain.value = 1;
-    out.connect(this.analyser);
+    out.connect(this._spatialDest(pos));
 
     // Real bells are inharmonic: partials at non-integer ratios, each with its
     // own decay (higher partials quieter and shorter). Two voices per partial,
@@ -322,10 +351,10 @@ export class AudioEngine {
 
   // A deep, long monastery bell (low D), routed through the analyser so the world
   // reacts to it too. Same inharmonic-partials approach as chime(), tuned low.
-  bell() {
+  bell(pos = null) {
     if (!this.ctx) return;
     const ctx = this.ctx, t0 = ctx.currentTime, f = 146.83; // low D
-    const out = ctx.createGain(); out.gain.value = 1; out.connect(this.analyser);
+    const out = ctx.createGain(); out.gain.value = 1; out.connect(this._spatialDest(pos));
     const partials = [
       { r: 1.0, a: 1.0, d: 5.5 }, { r: 2.0, a: 0.5, d: 4.0 },
       { r: 2.76, a: 0.4, d: 3.0 }, { r: 5.4, a: 0.15, d: 1.8 },
@@ -349,14 +378,14 @@ export class AudioEngine {
 
   // A soft sustained drone chord (the singing stone), fading in then out over a
   // few seconds, through the analyser so the world breathes with it.
-  drone() {
+  drone(pos = null) {
     if (!this.ctx) return;
     const ctx = this.ctx, t0 = ctx.currentTime;
     const out = ctx.createGain();
     out.gain.setValueAtTime(0.0001, t0);
     out.gain.exponentialRampToValueAtTime(0.28, t0 + 1.0);
     out.gain.exponentialRampToValueAtTime(0.0001, t0 + 6.5);
-    out.connect(this.analyser);
+    out.connect(this._spatialDest(pos));
     const freqs = [146.83, 220, 277.18, 329.63]; // gentle open chord
     for (const f of freqs) {
       for (const d of [-4, 4]) {
