@@ -58,6 +58,18 @@ export class Wonders {
         biomeOK: (x, z) => ctx.snowMask(x, z) > 0.45, msg: "the frozen lake holds something beneath" },
       { kind: "lighthouse", spacing: 500, density: 0.22, salt: 163, interact: false, nearR: 14, farR: 160, build: () => this._buildLighthouse(),
         biomeOK: (x, z) => ctx.snowMask(x, z) < 0.6 && ctx.desertMask(x, z) < 0.6, msg: "a lighthouse sweeps a sea that isn't there" },
+      { kind: "moonPavilion", spacing: 420, density: 0.26, salt: 177, nearR: 12, farR: 150, build: () => this._buildMoonPavilion(),
+        biomeOK: anyBiome, msg: "you step onto the moon-viewing platform" },
+      { kind: "statueGarden", spacing: 400, density: 0.28, salt: 191, nearR: 14, farR: 150, build: () => this._buildStatueGarden(),
+        biomeOK: grassy, msg: "the statues keep their long vigil with you" },
+      { kind: "bridge", spacing: 460, density: 0.24, salt: 203, nearR: 13, farR: 150, build: () => this._buildBridge(),
+        biomeOK: anyBiome, msg: "a bridge that ends in the mist" },
+      { kind: "observatory", spacing: 480, density: 0.24, salt: 217, nearR: 13, farR: 150, build: () => this._buildObservatory(),
+        biomeOK: anyBiome, msg: "the old telescope still finds the stars" },
+      { kind: "hotSpring", spacing: 400, density: 0.3, salt: 229, nearR: 12, farR: 140, build: () => this._buildHotSpring(),
+        biomeOK: (x, z) => ctx.snowMask(x, z) > 0.4, msg: "warmth rises from the hidden spring" },
+      { kind: "giant", spacing: 520, density: 0.2, salt: 241, nearR: 18, farR: 170, build: () => this._buildSleepingGiant(),
+        biomeOK: anyBiome, msg: "the sleeping giant breathes, slow as centuries" },
     ];
 
     this.objects = [];
@@ -369,6 +381,114 @@ export class Wonders {
     const beamMat = new THREE.MeshBasicMaterial({ color: "#fff2c0", transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); this._track(null, beamMat);
     const beam = new THREE.Mesh(beamGeo, beamMat); beam.position.y = 8.8; g.add(beam);
     const apply = (o) => { beam.rotation.y = o.elapsed * 0.7; beamMat.opacity = 0.04 + o.near * 0.1; lampMat.opacity = 0.6 + 0.3 * Math.sin(o.elapsed * 3.0); };
+    return { group: g, apply };
+  }
+
+  _buildMoonPavilion() {
+    const g = new THREE.Group();
+    const wood = new THREE.MeshStandardMaterial({ color: "#6b4a32", roughness: 1, flatShading: true });
+    const roofM = new THREE.MeshStandardMaterial({ color: "#3f4a55", roughness: 0.9, flatShading: true });
+    const box = new THREE.BoxGeometry(1, 1, 1); this._track(box, [wood, roofM]);
+    const deck = new THREE.Mesh(box, wood); deck.scale.set(6, 0.4, 6); deck.position.y = 0.4; g.add(deck);
+    for (const sx of [-2.4, 2.4]) for (const sz of [-2.4, 2.4]) { const p = new THREE.Mesh(box, wood); p.scale.set(0.28, 3, 0.28); p.position.set(sx, 1.9, sz); g.add(p); }
+    const roof = new THREE.Mesh(box, roofM); roof.scale.set(6.6, 0.35, 6.6); roof.position.y = 3.5; g.add(roof);
+    const lm = new THREE.MeshBasicMaterial({ color: "#ffd9a0", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }); this._track(null, lm);
+    const lampGeo = new THREE.SphereGeometry(0.3, 10, 8); this._track(lampGeo);
+    const lamp = new THREE.Mesh(lampGeo, lm); lamp.position.set(0, 3.0, 0); g.add(lamp);
+    const apply = (o) => { lm.opacity = (0.3 + o.night * 0.4) * (0.4 + o.near * 0.6) + o.bands.mid * 0.1 * o.near; };
+    return { group: g, apply };
+  }
+
+  _buildStatueGarden() {
+    const g = new THREE.Group();
+    const stone = new THREE.MeshStandardMaterial({ color: "#8f887c", roughness: 1, flatShading: true }); this._track(null, stone);
+    const baseGeo = new THREE.CylinderGeometry(0.5, 0.6, 0.4, 8); this._track(baseGeo);
+    const bodyGeo = new THREE.CylinderGeometry(0.32, 0.45, 1.8, 7); this._track(bodyGeo);
+    const headGeo = new THREE.IcosahedronGeometry(0.32, 0); this._track(headGeo);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: "#bfe6ff", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }); this._track(null, eyeMat);
+    const eyeGeo = new THREE.SphereGeometry(0.05, 6, 5); this._track(eyeGeo);
+    for (let i = 0; i < 6; i++) {
+      const a = rand(0, 6.28), r = rand(2, 7), px = Math.cos(a) * r, pz = Math.sin(a) * r, fy = rand(0, 6.28);
+      const base = new THREE.Mesh(baseGeo, stone); base.position.set(px, 0.2, pz); g.add(base);
+      const body = new THREE.Mesh(bodyGeo, stone); body.position.set(px, 1.2, pz); body.rotation.y = fy; g.add(body);
+      const head = new THREE.Mesh(headGeo, stone); head.position.set(px, 2.25, pz); g.add(head);
+      for (const ex of [-0.12, 0.12]) { const e = new THREE.Mesh(eyeGeo, eyeMat); e.position.set(px + Math.cos(fy) * 0.28 + ex * Math.sin(fy), 2.3, pz + Math.sin(fy) * 0.28 + ex * Math.cos(fy)); g.add(e); }
+    }
+    const apply = (o) => { eyeMat.opacity = o.near * (0.2 + 0.8 * o.night); };
+    return { group: g, apply };
+  }
+
+  _buildBridge() {
+    const g = new THREE.Group();
+    const stone = new THREE.MeshStandardMaterial({ color: "#9a938a", roughness: 1, flatShading: true }); this._track(null, stone);
+    const box = new THREE.BoxGeometry(1, 1, 1); this._track(box);
+    const N = 10;
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1), x = t * 13 - 2, y = 0.5 + t * 3.2;
+      const plank = new THREE.Mesh(box, stone); plank.scale.set(1.6, 0.3, 2.4); plank.position.set(x, y, 0); plank.rotation.z = -0.32; g.add(plank);
+      for (const sz of [-1.1, 1.1]) { const r = new THREE.Mesh(box, stone); r.scale.set(1.5, 0.55, 0.15); r.position.set(x, y + 0.5, sz); r.rotation.z = -0.32; g.add(r); }
+    }
+    const mm = new THREE.MeshBasicMaterial({ color: "#c8d6e0", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); this._track(null, mm);
+    const mgeo = new THREE.PlaneGeometry(7, 7); this._track(mgeo);
+    const mist = new THREE.Mesh(mgeo, mm); mist.position.set(12.5, 4, 0); mist.rotation.y = Math.PI / 2; g.add(mist);
+    const apply = (o) => { mm.opacity = (0.22 + o.near * 0.33) * (0.6 + 0.4 * Math.sin(o.elapsed * 0.6)); };
+    return { group: g, apply };
+  }
+
+  _buildObservatory() {
+    const g = new THREE.Group();
+    const wall = new THREE.MeshStandardMaterial({ color: "#8a8478", roughness: 1, flatShading: true });
+    const domeM = new THREE.MeshStandardMaterial({ color: "#6f7a82", roughness: 0.8, flatShading: true, side: THREE.DoubleSide });
+    const metal = new THREE.MeshStandardMaterial({ color: "#4a4d55", roughness: 0.6, metalness: 0.4, flatShading: true });
+    this._track(null, [wall, domeM, metal]);
+    const baseGeo = new THREE.CylinderGeometry(2.6, 2.8, 2.2, 16); this._track(baseGeo);
+    const base = new THREE.Mesh(baseGeo, wall); base.position.y = 1.1; g.add(base);
+    const domeGeo = new THREE.SphereGeometry(2.6, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5); this._track(domeGeo);
+    const dome = new THREE.Mesh(domeGeo, domeM); dome.position.y = 2.2; g.add(dome);
+    const scopeGeo = new THREE.CylinderGeometry(0.22, 0.3, 3.2, 10); this._track(scopeGeo);
+    const scope = new THREE.Mesh(scopeGeo, metal); scope.position.set(0, 3.2, 0); scope.rotation.z = 0.7; g.add(scope);
+    const beamMat = new THREE.MeshBasicMaterial({ color: "#bfe0ff", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); this._track(null, beamMat);
+    const beamGeo = new THREE.CylinderGeometry(0.08, 0.5, 18, 12, 1, true); beamGeo.translate(0, 9, 0); this._track(beamGeo);
+    const beam = new THREE.Mesh(beamGeo, beamMat); beam.position.set(0, 3.2, 0); beam.rotation.z = 0.7; g.add(beam);
+    const apply = (o) => { beamMat.opacity = o.near * (0.1 + 0.08 * Math.sin(o.elapsed * 1.5)); dome.rotation.y += o.dt * 0.05; scope.rotation.y = dome.rotation.y; beam.rotation.y = dome.rotation.y; };
+    return { group: g, apply };
+  }
+
+  _buildHotSpring() {
+    const g = new THREE.Group();
+    const rock = new THREE.MeshStandardMaterial({ color: "#5a5e66", roughness: 1, flatShading: true }); this._track(null, rock);
+    const rockGeo = new THREE.IcosahedronGeometry(0.7, 0); this._track(rockGeo);
+    for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28; const r = new THREE.Mesh(rockGeo, rock); r.position.set(Math.cos(a) * 2.6, 0.2, Math.sin(a) * 2.6); r.scale.setScalar(rand(0.7, 1.3)); g.add(r); }
+    const poolGeo = new THREE.CircleGeometry(2.4, 24); poolGeo.rotateX(-Math.PI / 2); this._track(poolGeo);
+    const poolMat = new THREE.MeshBasicMaterial({ color: "#4a8f9a", transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }); this._track(null, poolMat);
+    const pool = new THREE.Mesh(poolGeo, poolMat); pool.position.y = 0.15; g.add(pool);
+    const N = 40, sp = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) { const a = rand(0, 6.28), r = Math.sqrt(Math.random()) * 2.2; sp[3 * i] = Math.cos(a) * r; sp[3 * i + 1] = rand(0, 3); sp[3 * i + 2] = Math.sin(a) * r; }
+    const sgeo = new THREE.BufferGeometry(); sgeo.setAttribute("position", new THREE.BufferAttribute(sp, 3)); this._track(sgeo);
+    const smat = new THREE.PointsMaterial({ color: "#e8f2f4", size: 0.4, transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending }); this._track(null, smat);
+    g.add(new THREE.Points(sgeo, smat));
+    const ringGeo = new THREE.RingGeometry(0.3, 0.5, 24); ringGeo.rotateX(-Math.PI / 2); this._track(ringGeo);
+    const ringMat = new THREE.MeshBasicMaterial({ color: "#ffdcb0", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); this._track(null, ringMat);
+    const ring = new THREE.Mesh(ringGeo, ringMat); ring.position.y = 0.16; g.add(ring);
+    const apply = (o) => {
+      for (let i = 0; i < sp.length; i += 3) { sp[i + 1] += (0.4 + 0.3 * o.near) * o.dt; if (sp[i + 1] > 3.2) sp[i + 1] = 0; }
+      sgeo.attributes.position.needsUpdate = true;
+      smat.opacity = 0.2 + o.near * 0.3; poolMat.opacity = 0.5 + o.near * 0.25;
+      ring.scale.setScalar(1 + (1 - o.payoff) * 6); ringMat.opacity = o.payoff * 0.6;
+    };
+    return { group: g, apply };
+  }
+
+  _buildSleepingGiant() {
+    const g = new THREE.Group();
+    const rock = new THREE.MeshStandardMaterial({ color: "#5f6169", roughness: 1, flatShading: true }); this._track(null, rock);
+    const bodyGeo = new THREE.IcosahedronGeometry(4, 0); this._track(bodyGeo);
+    const torso = new THREE.Mesh(bodyGeo, rock); torso.scale.set(2.4, 1.0, 1.3); torso.position.set(0, 2.2, 0); g.add(torso);
+    const headGeo = new THREE.IcosahedronGeometry(2, 0); this._track(headGeo);
+    const head = new THREE.Mesh(headGeo, rock); head.position.set(9, 2.4, 0); g.add(head);
+    const kneeGeo = new THREE.IcosahedronGeometry(2.4, 0); this._track(kneeGeo);
+    const knee = new THREE.Mesh(kneeGeo, rock); knee.scale.set(1.1, 1.3, 1.1); knee.position.set(-6, 2.6, 0); g.add(knee);
+    const apply = (o) => { const br = Math.sin(o.elapsed * 0.35) * (0.15 + o.near * 0.35); torso.position.y = 2.2 + br; torso.scale.y = 1.0 + br * 0.06; };
     return { group: g, apply };
   }
 

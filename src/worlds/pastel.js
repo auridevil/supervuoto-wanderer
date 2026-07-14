@@ -3,6 +3,7 @@ import { fbm } from "../noise.js";
 import { makeDesertKit, buildCactus, buildBones, makeSnowKit, buildPine, buildSnowBoulder } from "../props.js";
 import { PERF } from "../perf.js";
 import { Wonders } from "../wonders.js";
+import { Encounters } from "../encounters.js";
 
 const SIZE = 320;
 const SEG = PERF.terrainSeg;
@@ -103,6 +104,9 @@ export class PastelWorld {
     this.onCollect = null;  // called when the walker picks up a ring (Journey hooks this)
     this.onLandmark = null; // called (text, ms) when a landmark first kindles near the walker
     this.onWonder = null;   // called (kind, text) when a wonder is first witnessed
+    this.onToast = null;    // called (text, ms) by fleeting encounters (no tally)
+    this._heading = new THREE.Vector3(1, 0, 0); // direction of travel (fox/kite lead)
+    this._camPrev = null;
     this.auroraBoost = 0;   // extra aurora energy (Journey's aurora-storm event)
     this.sunrise = 0;       // 0..1 dawn finale: warms sky/fog/water, fades the night
     // Day/night keyframes: sunset -> deep-night -> dawn. Each holds base colors
@@ -193,6 +197,11 @@ export class PastelWorld {
       onWonder: (k, t, f) => { if (this.onWonder) this.onWonder(k, t, f); },
     });
     this.wonders.reduceMotion = this.reduceMotion;
+    this.encounters = new Encounters(scene, {
+      surfaceHeight: (x, z) => this.surfaceHeight(x, z),
+      pathZ,
+      onToast: (t, ms) => { if (this.onToast) this.onToast(t, ms); },
+    });
   }
 
   get wonderHint() { return this.wonders ? this.wonders.hint : null; }
@@ -1499,6 +1508,13 @@ export class PastelWorld {
     this._updateLandmarks(cam, dt, elapsed, bands, beat, fm);
     if (this.wonders) { this.wonders.reduceMotion = this.reduceMotion; this.wonders.update(dt, elapsed, bands, beat, cam, night, fm); }
 
+    // Heading = direction of travel (holds while you stand still) — steers the fox/kite.
+    if (!this._camPrev) this._camPrev = cam.clone();
+    const _hx = cam.x - this._camPrev.x, _hz = cam.z - this._camPrev.z;
+    if (Math.hypot(_hx, _hz) > 0.001) this._heading.set(_hx, 0, _hz).normalize();
+    this._camPrev.copy(cam);
+    if (this.encounters) this.encounters.update(dt, elapsed, cam, this._heading, bands, beat);
+
     // --- scatter (wrap + reactive) ---
     for (const it of this.scatter) {
       const o = it.obj;
@@ -1584,6 +1600,7 @@ export class PastelWorld {
     // shrine roofs/finials, tower rings/caps). Every scene-added node lives in
     // this.objects. So removing all objects + disposing all _disp frees everything.
     if (this.wonders) { this.wonders.dispose(scene); this.wonders = null; }
+    if (this.encounters) { this.encounters.dispose(scene); this.encounters = null; }
     for (const o of this.objects) scene.remove(o);
     for (const d of this._disp) { try { d.dispose(); } catch {} }
     this._disp = [];

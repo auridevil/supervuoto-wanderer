@@ -117,9 +117,15 @@ time but only count once; auto ones kindle when you reach them.
 letterboxes, a haiku drifts up (`haiku.js`), and the sky **time-lapses**
 (`journey.restBoost`). Any movement rises you. Available anywhere.
 
-**Still to add** (each a small builder): moon pavilion, sleeping giant, statue
-garden, bridge to nowhere, observatory, hot spring; fleeting encounters (fox
-guide, ghost pilgrim, prayer slip, kite).
+**19 wonders now** — added: moon pavilion, statue garden (eyes catch the moon),
+bridge to nowhere, observatory (scanning telescope), hot spring (steam + warmth
+ring), sleeping giant (breathing hill-form, low hum).
+
+**Fleeting encounters** ✅ (`encounters.js`) — chance moments, one at a time on a
+gentle cadence: the **fox** trots ahead in your direction of travel then curls &
+fades; a **ghost pilgrim** walks the path and nods; a **prayer slip** flutters →
+read it (a one-line note) and it lifts away; a **kite** drifts across the far sky.
+Steered by a travel-heading vector; toasts via `onToast` (no tally).
 
 ## Cross-cutting
 

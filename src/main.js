@@ -71,7 +71,7 @@ function onWonder(kind, text, first) {
   if (first) { flashWorldName(text, 3600); journey.witnessWonder(); }
   switch (kind) {
     case "monastery": audio.bell(); break;
-    case "singing": audio.drone(); break;
+    case "singing": case "giant": audio.drone(); break;
     case "well": audio.chime(1); break;
     case "cairn": audio.chime(2); break;
     case "door": audio.chime(0); break;
@@ -127,6 +127,7 @@ function setWorld(key) {
   if ("onCollect" in active) active.onCollect = onRingCollected;
   if ("onLandmark" in active) active.onLandmark = onLandmark;
   if ("onWonder" in active) active.onWonder = onWonder;
+  if ("onToast" in active) active.onToast = flashWorldName;
   flashWorldName(active.name);
 }
 
