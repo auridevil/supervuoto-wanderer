@@ -14,6 +14,7 @@ import { LofiShader } from "./lofi.js";
 import { Wayfinding } from "./wayfinding.js";
 import { Journey } from "./journey.js";
 import { randomHaiku } from "./haiku.js";
+import { startWizardPreview } from "./preview.js";
 
 const app = document.getElementById("app");
 
@@ -142,6 +143,7 @@ const settings = {
   moveSpeed: 16, // default is fast/running; Shift strolls slowly
   exposure: 1.1,
   reduceMotion: prefersReducedMotion, // default ON if the OS asks for it
+  quiet: false, // Quiet mode: soften all reactivity for meditative walking
   fov: 70,
   lofiOn: true,
   pixelSize: 2,
@@ -183,6 +185,7 @@ const panel = document.getElementById("panel");
 const waveWidthInput = document.getElementById("waveWidth");
 const wwVal = document.getElementById("wwVal");
 const setReduceMotion = document.getElementById("setReduceMotion");
+const setQuiet = document.getElementById("setQuiet");
 const setFov = document.getElementById("setFov");
 const fovVal = document.getElementById("fovVal");
 const setLofiOn = document.getElementById("setLofiOn");
@@ -220,6 +223,11 @@ function applyReduceMotion() {
   wizard.reduceMotion = settings.reduceMotion;
   journey.reduceMotion = settings.reduceMotion;
   if (setReduceMotion) setReduceMotion.checked = settings.reduceMotion;
+}
+
+function applyQuiet() {
+  audio.calm = settings.quiet ? 0.4 : 1;
+  if (setQuiet) setQuiet.checked = settings.quiet;
 }
 
 function applyFov() {
@@ -283,6 +291,12 @@ if (setReduceMotion)
   setReduceMotion.addEventListener("change", () => {
     settings.reduceMotion = setReduceMotion.checked;
     applyReduceMotion();
+    saveSettings();
+  });
+if (setQuiet)
+  setQuiet.addEventListener("change", () => {
+    settings.quiet = setQuiet.checked;
+    applyQuiet();
     saveSettings();
   });
 if (setFov)
@@ -370,6 +384,7 @@ applyFov();
 applyLofi();
 applyBloom();
 applyReduceMotion();
+applyQuiet();
 
 const worldNameEl = document.getElementById("worldName");
 let nameTimer;
@@ -388,6 +403,8 @@ const reticle = document.getElementById("reticle");
 const trackInput = document.getElementById("trackInput");
 const wfWonderChip = document.getElementById("wf-wonder");
 const restHaikuEl = document.getElementById("restHaiku");
+const wizPreviewCanvas = document.getElementById("wizardPreview");
+let stopWizPreview = wizPreviewCanvas ? startWizardPreview(wizPreviewCanvas) : () => {};
 let started = false;
 let pendingFile = null;
 
@@ -549,6 +566,7 @@ async function start() {
   started = true;
   audio.unlock(); // synchronous, still inside the tap gesture — unlocks iOS audio
   overlay.classList.add("hidden");
+  stopWizPreview(); // free the preview mini-renderer
 
   await audio.resume();
   try {
@@ -707,10 +725,37 @@ const clock = new THREE.Clock();
 let pump = 0; // smoothed kick energy -> a brief bloom + FOV pulse on the beat
 const _fwd = new THREE.Vector3(); // camera forward, for the spatial-audio listener
 
+// ---- FPS auto-scaler: smooth on weak GPUs, lush on strong ones ----
+// Nudges the render scale (pixel ratio) toward the measured framerate; drops
+// bloom (runtime only, never persisted) if things get truly rough.
+let fpsEMA = 60, perfScale = 1, _scaleAcc = 0;
+function setRenderScale(s) {
+  const px = Math.min(window.devicePixelRatio || 1, PERF.maxPixelRatio) * s;
+  renderer.setPixelRatio(px);
+  if (composer.setPixelRatio) composer.setPixelRatio(px);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  syncResolution();
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
+
+  // FPS auto-scaler (evaluated every ~1.5s to avoid thrash).
+  if (dt > 0.0001) fpsEMA += (1 / dt - fpsEMA) * 0.05;
+  _scaleAcc += dt;
+  if (_scaleAcc > 1.5) {
+    _scaleAcc = 0;
+    let ns = perfScale;
+    if (fpsEMA < 45 && perfScale > 0.6) ns = Math.max(0.6, perfScale - 0.1);
+    else if (fpsEMA > 57 && perfScale < 1) ns = Math.min(1, perfScale + 0.05);
+    if (Math.abs(ns - perfScale) > 0.001) { perfScale = ns; setRenderScale(perfScale); }
+    if (fpsEMA < 32) bloomPass.enabled = false;              // runtime only
+    else if (fpsEMA > 48) bloomPass.enabled = settings.bloomOn;
+  }
+
   const bands = audio.update(dt);
   controls.update(dt);
   if (resting && controls.position.distanceTo(restAnchor) > 0.4) setRest(false); // move to rise

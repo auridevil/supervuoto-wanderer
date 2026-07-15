@@ -137,6 +137,17 @@ export class PastelWorld {
       },
     ];
     this._arcSky = {}; // resolved keyframe scratch (filled by _sampleArc)
+
+    // Per-session variety: a subtle season hue/sat nudge + a rare special sky.
+    const qp = (k) => { try { return new URLSearchParams(location.search).get(k); } catch { return null; } };
+    const sp = qp("season");
+    this._season = sp !== null ? Math.max(0, Math.min(3, parseInt(sp, 10) || 0)) : Math.floor(Math.random() * 4);
+    const SEASONS = [{ h: 0.02, s: 0.03 }, { h: -0.02, s: 0.02 }, { h: -0.05, s: 0.04 }, { h: 0.06, s: -0.03 }]; // spring, summer, autumn, winter
+    this._seasonHue = SEASONS[this._season].h;
+    this._seasonSat = SEASONS[this._season].s;
+    const rp = qp("raresky");
+    this.rareSky = rp !== null ? (rp !== "0" && rp !== "false") : Math.random() < 0.16;
+    this._rareAnnounced = false;
   }
 
   // Sample the day/night arc at this.progress (0..1). Lerps between the three
@@ -619,6 +630,20 @@ export class PastelWorld {
     scene.add(this.sunGroup);
     this.objects.push(this.sunGroup);
     this._track(coreGeo, this.sunMat); this._track(glowGeo, this.sunGlow);
+
+    // Rare sky: a small companion moon in a different quarter of the sky.
+    if (this.rareSky) {
+      this.moon2 = new THREE.Group();
+      const core2 = new THREE.Mesh(new THREE.SphereGeometry(9, 20, 14), new THREE.MeshBasicMaterial({ color: "#dfe6ff" }));
+      const glow2Mat = new THREE.MeshBasicMaterial({ color: "#8fa6d6", transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending });
+      const glow2 = new THREE.Mesh(new THREE.SphereGeometry(15, 20, 14), glow2Mat);
+      this.moon2.add(core2, glow2);
+      this.moon2Dir = new THREE.Vector3(-0.62, 0.34, -0.7).normalize();
+      scene.add(this.moon2);
+      this.objects.push(this.moon2);
+      this._track(core2.geometry, core2.material);
+      this._track(glow2.geometry, glow2Mat);
+    }
   }
 
   _buildAurora(scene) {
@@ -1422,6 +1447,13 @@ export class PastelWorld {
       arc.waterDp.lerp(DAWN_WATER_DP, s * 0.8);
       arc.night *= 1 - s * 0.95;
     }
+    // Seasonal tint (per session): nudge sky / fog / water hue a touch.
+    if (this._seasonHue || this._seasonSat) {
+      arc.skyTop.offsetHSL(this._seasonHue, this._seasonSat, 0);
+      arc.skyBot.offsetHSL(this._seasonHue, this._seasonSat, 0);
+      arc.fog.offsetHSL(this._seasonHue * 0.5, this._seasonSat * 0.5, 0);
+      arc.waterSh.offsetHSL(this._seasonHue, 0, 0);
+    }
     const night = arc.night; // 0..1, peaks mid-progress
 
     // --- global sky / light reaction (strong) ---
@@ -1467,6 +1499,13 @@ export class PastelWorld {
     this.sunGroup.scale.setScalar(sunPulse);
     this.sunGlow.opacity = 0.25 + bands.mid * 0.35 + beat * 0.25 * fm;
     this.sunMat.color.setHSL((0.12 - bands.bass * 0.06 + 1) % 1, 0.6, 0.85 + beat * 0.1 * fm);
+
+    // Rare companion moon (camera-anchored like the main one).
+    if (this.moon2) {
+      this.moon2.position.copy(cam).addScaledVector(this.moon2Dir, 400);
+      this.moon2.scale.setScalar(1 + bands.level * 0.2 + beat * 0.15 * fm);
+      if (!this._rareAnnounced && this.onToast) { this._rareAnnounced = true; this.onToast("two moons tonight", 4000); }
+    }
 
     // --- winding path + waveform ---
     this._updatePath(cam, bands, beat, wave, elapsed, night, fm);

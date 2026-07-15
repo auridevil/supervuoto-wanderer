@@ -101,6 +101,14 @@
         50% { box-shadow: 0 0 26px 2px rgba(160,190,255,0.35); }
       }
       #overlay:hover .start-btn { background: rgba(255,255,255,0.16); transform: scale(1.04); }
+      /* Live 3D portrait of the sage on the start screen. */
+      #wizardPreview {
+        width: 190px; height: 230px; margin: 0.2rem 0 -0.4rem; display: block;
+        filter: drop-shadow(0 12px 30px rgba(0,0,0,0.45));
+        -webkit-user-select: none; user-select: none; pointer-events: none;
+      }
+      @media (max-width: 700px) { #wizardPreview { width: 150px; height: 185px; } }
+
       .file-row { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
       .file-row label { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.05em; }
       .file-row input { color: var(--muted); font-size: 0.75rem; }
@@ -413,6 +421,7 @@
     <div id="overlay" class="ui">
       <h1>Supervuoto Wanderer</h1>
       <div class="tagline">an endless walk through sound</div>
+      <canvas id="wizardPreview" aria-label="the sage-traveler"></canvas>
       <div id="mobileNote">📱 Touch controls: <b>left thumb</b> — walk (a joystick appears under it) &nbsp;·&nbsp; <b>drag right side</b> — look around &nbsp;·&nbsp; <b>↥</b> — jump. Headphones recommended.</div>
       <p>A goalless wander through a moonlit world that breathes with the music. No objective. Just walk.</p>
       <div id="startControls">
@@ -471,6 +480,12 @@
           <input id="setReduceMotion" type="checkbox" />
         </label>
         <span class="setting-sub">Damps beat flashes &amp; strobes (photosensitivity).</span>
+
+        <label class="setting-row check">
+          <span>Quiet mode</span>
+          <input id="setQuiet" type="checkbox" />
+        </label>
+        <span class="setting-sub">Softens all reactivity for a meditative walk.</span>
 
         <label>Move speed <span id="speedVal" class="val">16</span></label>
         <input id="setSpeed" type="range" min="4" max="30" step="1" value="16" />

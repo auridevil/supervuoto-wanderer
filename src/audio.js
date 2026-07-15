@@ -20,6 +20,7 @@ export class AudioEngine {
     this.placeholderNodes = [];
     this.mode = "none";       // "file" | "placeholder"
     this.chimeVolume = 0.18;  // 0..1 ring-pickup bell volume (main.js binds the setting)
+    this.calm = 1;            // <1 in Quiet mode -> softens all band/beat reactivity
   }
 
   _ensureCtx() {
@@ -249,8 +250,9 @@ export class AudioEngine {
     const release = Math.min(1, dt * 4.5);
     const env = (cur, target) => cur + (target - cur) * (target > cur ? attack : release);
     const b = this.bands;
-    for (const key in raw) b[key] = env(b[key], Math.min(1, raw[key] * gain));
-    b.level = env(b.level, Math.min(1, rawLevel * gain));
+    const cs = this.calm; // Quiet mode softens everything at the source
+    for (const key in raw) b[key] = env(b[key], Math.min(1, raw[key] * gain) * cs);
+    b.level = env(b.level, Math.min(1, rawLevel * gain) * cs);
 
     // --- Spectral-flux onset detection (kick + hat) ---
     // The summed positive bin-to-bin rise in a band = newly-arrived energy = an
@@ -272,8 +274,8 @@ export class AudioEngine {
     this._fluxHighAvg += (fluxHigh - this._fluxHighAvg) * fk;
     prev.set(this.freq);
 
-    if (fluxLow > this._fluxLowAvg * 1.6 + 0.006 && b.bass > 0.12) this.beat = 1;
-    if (fluxHigh > this._fluxHighAvg * 1.8 + 0.004) this.hat = 1;
+    if (fluxLow > this._fluxLowAvg * 1.6 + 0.006 && b.bass > 0.12) this.beat = cs;
+    if (fluxHigh > this._fluxHighAvg * 1.8 + 0.004) this.hat = cs;
     this.beat *= Math.pow(0.02, dt); // decay
     this.hat *= Math.pow(0.02, dt);
 

@@ -49,10 +49,12 @@ The `wonders.js` system is built to scale — each new gem is one small builder.
 ## E. Time, weather & seasons  · long-arc variety
 - **Weather ↔ day/night arc** `S` — bias snowfall/mist/sandstorm by the hour so
   dawn clears, deep night thickens (the hooks already exist).
-- **Seasons over very long walks** `M` — palette + foliage drift across a much
-  slower cycle than the 30-min night, so an hour-long mix ages the world.
-- **Rare skies** `S` — an occasional double-moon, a great comet night, a blood
-  moon — keyed to seldom-hit thresholds so they feel like luck.
+- **Seasons** ✅ (per session) — a subtle hue/sat nudge to sky/fog/water picks a
+  spring/summer/autumn/winter cast each visit (`?season=0..3`). *Slow drift across
+  a long walk is still open.*
+- **Rare skies** ✅ (base) — ~1 in 6 sessions a **second companion moon** rises
+  (`?raresky=1` to force it), announced with a quiet toast. More variants (great
+  comet, blood moon) still open.
 
 ## F. Companions & life  · the world feels inhabited
 - **Flocking fauna** `M` (last Tier-3 item) — birds/fish that drift and scatter
@@ -61,12 +63,13 @@ The `wonders.js` system is built to scale — each new gem is one small builder.
   where you linger, brightens near wonders) — a companion, not a pet with stats.
 
 ## G. Craft & accessibility  · protect the feel everywhere
-- **FPS auto-scaler** `M` — measure frame time, dial grass/particle counts + pixel
-  ratio so low-end phones stay smooth and strong machines stay lush.
+- **FPS auto-scaler** ✅ — measures frame time (EMA) and nudges the render scale
+  (pixel ratio) every ~1.5 s; drops bloom (runtime only) if it gets truly rough.
 - **Mobile pass** `M` — verify grass/weather/wonder counts on real devices; make
-  the interact/curiosity UI thumb-friendly.
-- **"Quiet mode"** `S` — one toggle that softens *everything* (reactivity, weather,
-  events) for pure meditative walking.
+  the curiosity UI thumb-friendly.
+- **"Quiet mode"** ✅ — a settings toggle that softens *all* reactivity at the
+  source (`audio.calm` scales the bands + beat), so every visual eases down —
+  fauna scatter included.
 
 ## H. Live & stage  · the wander as a VJ instrument
 Feed the visuals from a **live external audio source** so the world reacts to

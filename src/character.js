@@ -1,8 +1,9 @@
 import * as THREE from "three";
 
-// A small, serene sage-traveler: pilgrim sun-hat, draped cloak, satchel with a
-// bedroll, boots and a walking staff with a hanging lantern that breathes with
-// the music. Earthy palette, not a purple wizard.
+// A small, serene sage-traveler: pilgrim sun-hat, layered cloak that sways as he
+// walks, a shoulder mantle, a neck scarf, satchel with a bedroll, a water gourd,
+// prayer beads, boots, and a walking staff with a hanging lantern that breathes
+// with the music. Earthy palette, not a purple wizard.
 export class Wizard {
   constructor() {
     this.group = new THREE.Group();
@@ -18,14 +19,17 @@ export class Wizard {
     const M = (c, r = 0.9, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: r, flatShading: flat });
     const tunic = M("#cdb892");      // warm sand
     const cloak = M("#4f6b5b");      // travelled teal-green
+    const mantleM = M("#3c5347");    // darker shoulder mantle
     const leather = M("#6b4a32");    // pack / straps / boots
-    const rust = M("#b5683a");       // sash / hat band
+    const rust = M("#b5683a");       // sash / hat band / scarf
     const skin = M("#e8c39e");
     const beardMat = M("#efeae0");
     const straw = M("#d8b46a");      // sun-hat
     const wood = M("#7a5230", 1);
+    const gourdM = M("#c9a24a");     // water gourd
+    const beadM = M("#7a5230", 0.5); // prayer beads
     // Body materials we can flash red when a ring is collected.
-    this.bodyMats = [tunic, cloak, leather, rust, skin, beardMat, straw, wood];
+    this.bodyMats = [tunic, cloak, mantleM, leather, rust, skin, beardMat, straw, wood, gourdM, beadM];
 
     // ---- legs + boots ----
     const legGeo = new THREE.CapsuleGeometry(0.1, 0.42, 4, 8);
@@ -34,8 +38,8 @@ export class Wizard {
     this.legR = new THREE.Mesh(legGeo, leather);
     this.legL.position.set(-0.17, 0.34, 0);
     this.legR.position.set(0.17, 0.34, 0);
-    const bootL = new THREE.Mesh(bootGeo, leather); bootL.position.set(0, -0.28, 0.05); this.legL.add(bootL);
-    const bootR = new THREE.Mesh(bootGeo, leather); bootR.position.set(0, -0.28, 0.05); this.legR.add(bootR);
+    this.bootL = new THREE.Mesh(bootGeo, leather); this.bootL.position.set(0, -0.28, 0.05); this.legL.add(this.bootL);
+    this.bootR = new THREE.Mesh(bootGeo, leather); this.bootR.position.set(0, -0.28, 0.05); this.legR.add(this.bootR);
     this.group.add(this.legL, this.legR);
 
     // ---- tunic / robe (knee length, tapered) ----
@@ -46,23 +50,50 @@ export class Wizard {
     const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.12, 12), rust);
     belt.position.y = 0.66;
     this.group.add(belt);
-    // a hanging pouch on the belt
+    // a hanging pouch + a water gourd on the belt
     const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.1), leather);
     pouch.position.set(-0.34, 0.6, 0.18);
     this.group.add(pouch);
+    const gourd = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), gourdM);
+    gourd.scale.set(1, 1.3, 1); gourd.position.set(0.36, 0.56, 0.16);
+    this.group.add(gourd);
+    const gourdNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.1, 8), gourdM);
+    gourdNeck.position.set(0.36, 0.72, 0.16);
+    this.group.add(gourdNeck);
 
-    // ---- cloak draped over the back ----
-    const cloakGeo = new THREE.CylinderGeometry(0.42, 0.6, 1.15, 14, 1, true, Math.PI * 0.5, Math.PI);
+    // ---- long cloak on a shoulder pivot, so it can sway/lag as he walks ----
+    this.cloakPivot = new THREE.Group();
+    this.cloakPivot.position.set(0, 1.5, -0.04);
+    const cloakGeo = new THREE.CylinderGeometry(0.42, 0.62, 1.2, 14, 1, true, Math.PI * 0.5, Math.PI);
     const cape = new THREE.Mesh(cloakGeo, cloak);
     cape.material.side = THREE.DoubleSide;
-    cape.position.set(0, 1.1, -0.02);
+    cape.position.set(0, -0.42, 0.02);
     cape.scale.z = 0.85;
-    this.group.add(cape);
+    this.cloakPivot.add(cape);
+    this.group.add(this.cloakPivot);
+
+    // ---- shoulder mantle (short cape over the shoulders) ----
+    const mantle = new THREE.Mesh(new THREE.ConeGeometry(0.44, 0.5, 16, 1, true), mantleM);
+    mantle.material.side = THREE.DoubleSide;
+    mantle.position.set(0, 1.42, 0);
+    this.group.add(mantle);
     // collar
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.07, 8, 16, Math.PI), cloak);
-    collar.position.set(0, 1.5, -0.04);
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.06, 8, 16), mantleM);
+    collar.position.set(0, 1.54, 0);
     collar.rotation.x = Math.PI / 2;
     this.group.add(collar);
+
+    // ---- neck scarf with a hanging, swaying end ----
+    const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.05, 8, 16), rust);
+    scarf.position.set(0, 1.5, 0.02); scarf.rotation.x = Math.PI / 2;
+    this.group.add(scarf);
+    this.scarfEnd = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.44, 0.04), rust);
+    this.scarfEnd.position.set(0.12, 1.28, 0.12);
+    this.group.add(this.scarfEnd);
+    // prayer beads
+    const beads = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.022, 6, 20), beadM);
+    beads.position.set(0, 1.36, 0.08); beads.rotation.x = Math.PI / 2.3;
+    this.group.add(beads);
 
     // ---- backpack + bedroll ----
     const pack = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.46, 0.22), leather);
@@ -79,7 +110,7 @@ export class Wizard {
       this.group.add(strap);
     }
 
-    // ---- arms + hands ----
+    // ---- arms + hands (left swings; right grips the staff) ----
     const armGeo = new THREE.CapsuleGeometry(0.095, 0.5, 4, 8);
     const handGeo = new THREE.SphereGeometry(0.1, 10, 8);
     this.armL = new THREE.Mesh(armGeo, tunic);
@@ -88,6 +119,7 @@ export class Wizard {
     this.armR.position.set(0.42, 1.2, 0);
     const handL = new THREE.Mesh(handGeo, skin); handL.position.set(0, -0.32, 0); this.armL.add(handL);
     const handR = new THREE.Mesh(handGeo, skin); handR.position.set(0, -0.32, 0); this.armR.add(handR);
+    this.armR.rotation.x = -0.7; // reach forward to hold the staff
     this.group.add(this.armL, this.armR);
 
     // ---- head ----
@@ -100,8 +132,8 @@ export class Wizard {
     nose.rotation.x = Math.PI / 2; nose.position.set(0, -0.02, 0.25);
     this.head.add(nose);
     // beard (two layers for some bulk)
-    const beard1 = new THREE.Mesh(new THREE.ConeGeometry(0.23, 0.6, 10, 1, true), beardMat);
-    beard1.position.set(0, -0.32, 0.06); beard1.rotation.x = Math.PI; beard1.scale.z = 0.65;
+    const beard1 = new THREE.Mesh(new THREE.ConeGeometry(0.23, 0.62, 10, 1, true), beardMat);
+    beard1.position.set(0, -0.33, 0.06); beard1.rotation.x = Math.PI; beard1.scale.z = 0.65;
     this.head.add(beard1);
     const moustache = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.08), beardMat);
     moustache.position.set(0, -0.06, 0.22);
@@ -120,10 +152,10 @@ export class Wizard {
     }
     // ---- pilgrim sun-hat (wide brim + low crown + band) ----
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.035, 20), straw);
-    brim.position.y = 0.24;
+    brim.position.y = 0.24; brim.rotation.z = 0.04; // a slightly rakish tilt
     this.head.add(brim);
     const crown = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.32, 20), straw);
-    crown.position.y = 0.4;
+    crown.position.y = 0.4; crown.rotation.z = 0.04;
     this.head.add(crown);
     const band = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.03, 8, 20), rust);
     band.position.y = 0.27; band.rotation.x = Math.PI / 2;
@@ -184,7 +216,7 @@ export class Wizard {
     lantern.add(this.orbLight);
     lantern.position.set(0.16, 1.78, 0.05);
     this.staff.add(lantern);
-    this.staff.position.set(0.5, 0, 0.12);
+    this.staff.position.set(0.46, 0, 0.2);
     this.group.add(this.staff);
   }
 
@@ -192,22 +224,38 @@ export class Wizard {
     let target = speed > 0.3 ? Math.atan2(vel.x, vel.z) : -yaw;
     let diff = ((target - this.facing + Math.PI) % (Math.PI * 2)) - Math.PI;
     this.facing += diff * Math.min(1, dt * 8);
-    this.group.rotation.y = this.facing;
+    const lean = Math.min(speed, 6) / 6 * 0.08; // lean into the stride
+    this.group.rotation.set(lean, this.facing, 0);
 
     this.phase += speed * dt * 1.1;
     const sw = Math.sin(this.phase);
     const idle = Math.sin(elapsed * 1.5) * 0.04;
     const walkAmt = Math.min(1, speed / 6);
 
+    // Legs swing at the hip; boots flick at the end of each step.
     this.legL.rotation.x = sw * 0.5 * walkAmt;
     this.legR.rotation.x = -sw * 0.5 * walkAmt;
-    this.armL.rotation.x = -sw * 0.35 * walkAmt;
-    this.armR.rotation.x = sw * 0.2 * walkAmt;
+    this.bootL.rotation.x = Math.max(0, sw) * 0.5 * walkAmt;
+    this.bootR.rotation.x = Math.max(0, -sw) * 0.5 * walkAmt;
+    // Left arm swings freely; right stays forward gripping the staff.
+    this.armL.rotation.x = -sw * 0.4 * walkAmt;
+    this.armR.rotation.x = -0.7 + sw * 0.05 * walkAmt;
     this.head.rotation.z = sw * 0.04 * walkAmt;
+    this.head.rotation.x = lean * 0.5 + Math.sin(elapsed * 1.2) * 0.02;
+
+    // Cloak lags behind the walk: leans back with speed, sways side to side.
+    this.cloakPivot.rotation.x = 0.12 + walkAmt * 0.28 + Math.sin(this.phase * 0.5) * 0.05 * walkAmt;
+    this.cloakPivot.rotation.z = -sw * 0.08 * walkAmt;
+    // Scarf end flutters.
+    this.scarfEnd.rotation.x = 0.2 + Math.sin(this.phase + 1) * 0.25 * walkAmt + Math.sin(elapsed * 2) * 0.06;
 
     const bob = Math.abs(sw) * 0.08 * walkAmt + idle;
     this.group.position.set(pos.x, groundY + bob + 0.05 + jumpOffset, pos.z);
     if (jumpOffset > 0.1) { this.legL.rotation.x = -0.5; this.legR.rotation.x = -0.5; }
+
+    // Staff plants with each stride (a small tap), and swings with the lean.
+    this.staff.rotation.z = 0.06 + Math.sin(this.phase) * 0.05 * walkAmt;
+    this.staff.position.y = Math.max(0, -Math.sin(this.phase)) * 0.04 * walkAmt;
 
     // Keep the contact shadow on the ground; soften/grow it as the sage rises.
     const lift = bob + jumpOffset;
