@@ -236,6 +236,12 @@ export class AudioEngine {
     };
     const rawLevel = (raw.sub * 0.6 + raw.bass + raw.mid + raw.treble + raw.air * 0.6) / 4.2;
 
+    // Bass emphasis — lean the visuals into the low end (bass-rich tracks + the
+    // generative pad). Applied after the AGC reference so gain still tracks true
+    // loudness, but the sub/bass bands the visuals read punch harder.
+    raw.sub = Math.min(1, raw.sub * 1.5);
+    raw.bass = Math.min(1, raw.bass * 1.35);
+
     // --- Adaptive gain (AGC) ---
     // Track a slowly-decaying max loudness and scale so the loudest recent moment
     // maps to ~0.9. Quiet mixes get lifted, hot masters get tamed, and because all
@@ -274,7 +280,7 @@ export class AudioEngine {
     this._fluxHighAvg += (fluxHigh - this._fluxHighAvg) * fk;
     prev.set(this.freq);
 
-    if (fluxLow > this._fluxLowAvg * 1.6 + 0.006 && b.bass > 0.12) this.beat = cs;
+    if (fluxLow > this._fluxLowAvg * 1.4 + 0.004 && b.bass > 0.1) this.beat = cs;
     if (fluxHigh > this._fluxHighAvg * 1.8 + 0.004) this.hat = cs;
     this.beat *= Math.pow(0.02, dt); // decay
     this.hat *= Math.pow(0.02, dt);

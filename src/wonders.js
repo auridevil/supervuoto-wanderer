@@ -72,6 +72,9 @@ export class Wonders {
         biomeOK: anyBiome, msg: "the sleeping giant breathes, slow as centuries" },
     ];
 
+    // Thin the world: push wonders further apart so fewer sit near you at once.
+    for (const t of this.types) { t.spacing *= 1.5; t.density *= 0.78; }
+
     this.objects = [];
     for (const t of this.types) {
       const inst = t.build();

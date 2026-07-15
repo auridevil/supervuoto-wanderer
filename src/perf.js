@@ -9,5 +9,5 @@ export const IS_MOBILE =
     /Android|iPhone|iPad|iPod|IEMobile|Mobile/i.test(navigator.userAgent));
 
 export const PERF = IS_MOBILE
-  ? { terrainSeg: 96, particles: 700, scatter: 0.55, clouds: 8, grass: 1200, fauna: 10, maxPixelRatio: 1.5 }
-  : { terrainSeg: 140, particles: 1600, scatter: 1, clouds: 12, grass: 4500, fauna: 22, maxPixelRatio: 2 };
+  ? { terrainSeg: 96, particles: 450, scatter: 0.4, clouds: 6, grass: 750, fauna: 7, maxPixelRatio: 1.5 }
+  : { terrainSeg: 140, particles: 900, scatter: 0.6, clouds: 9, grass: 2600, fauna: 12, maxPixelRatio: 2 };

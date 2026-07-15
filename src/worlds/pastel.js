@@ -282,7 +282,7 @@ export class PastelWorld {
          vec3 wpH = (modelMatrix * vec4(position, 1.0)).xyz;
          float hv = sin(wpH.x * 0.045 + uHeaveTime * 1.2) * cos(wpH.z * 0.05 - uHeaveTime * 0.9);
          float heaveFade = smoothstep(2.0, ${(HEIGHT * 0.45).toFixed(2)}, wpH.y);
-         transformed.y += hv * uHeave * heaveFade * 0.5;`
+         transformed.y += hv * uHeave * heaveFade * 0.85;`
       );
       // Moonlit fresnel rim: a cool edge glow at grazing angles so ridges read as
       // sculpted silhouettes rather than flat facets.
@@ -509,12 +509,12 @@ export class PastelWorld {
       l.g.position.set(lx, this.surfaceHeight(lx, lz), lz);
       l.mat.color.setHSL((0.1 + bands.mid * 0.1) % 1, 0.85, 0.62 + night * 0.08);
       l.mat.opacity = (0.5 + night * 0.28) + bands.level * 0.18; // lanterns glow brighter at night
-      l.orb.scale.setScalar(1 + night * 0.1 + bands.bass * 0.35 + beat * 0.3 * fm);
+      l.orb.scale.setScalar(1 + night * 0.1 + bands.bass * 0.7 + beat * 0.5 * fm);
     }
 
     // Waveform: first compute the wiggling centre-curve, then extrude a ribbon.
     const N = this.waveCount, wx = this._wx, wz = this._wz;
-    const amp = 2.2 + bands.level * 5; // louder => taller wiggle
+    const amp = 2.2 + bands.level * 3 + bands.bass * 7; // louder => taller wiggle; bass drives it hard
     const wlen = wave ? wave.length : 0;
     for (let i = 0; i < N; i++) {
       const frac = i / (N - 1);
@@ -526,7 +526,7 @@ export class PastelWorld {
       wx[i] = x + ppx * off; wz[i] = cz + ppz * off;
     }
     const wpos = this.waveRibbon.geometry.attributes.position, wa = wpos.array;
-    const halfT = this.waveWidth + bands.level * 0.15 + beat * 0.12 * fm; // slider dominates; subtle pulse
+    const halfT = this.waveWidth + bands.level * 0.15 + bands.bass * 0.25 + beat * 0.12 * fm; // slider dominates; bass thickens it
     const y = PATH_LEVEL + 0.22;
     for (let i = 0; i < N; i++) {
       const i0 = Math.max(0, i - 1), i1 = Math.min(N - 1, i + 1);
@@ -787,7 +787,7 @@ export class PastelWorld {
       place(c); add(c, { kind: "crystal", mat: m, baseScale: c.scale.clone() });
     }
     // Floating magical orbs (reactive, hover above ground — cohesive cyan)
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const hue = rand(0.45, 0.55);
       const m = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(hue, 0.75, 0.7), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
       this._disp.push(m);
@@ -864,7 +864,7 @@ export class PastelWorld {
     };
 
     // Torii gates (walk through; the two posts are solid).
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 3; i++) {
       const g = new THREE.Group();
       g.add(block(0.4, 4, 0.4, toriiM, -1.6, 2, 0, true));
       g.add(block(0.4, 4, 0.4, toriiM, 1.6, 2, 0, true));
@@ -875,7 +875,7 @@ export class PastelWorld {
     }
 
     // Shrines / temples (solid body).
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) {
       const g = new THREE.Group();
       g.add(block(3.2, 0.6, 3.2, stoneDark, 0, 0.3, 0));
       g.add(block(2.2, 1.9, 2.2, stone, 0, 1.55, 0, true));
@@ -889,7 +889,7 @@ export class PastelWorld {
     }
 
     // Towers (solid shaft).
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) {
       const g = new THREE.Group();
       const h = 6 + Math.random() * 4;
       g.add(column(1.1, h, stone, 0, 0, true));
@@ -919,7 +919,7 @@ export class PastelWorld {
     }
 
     // Labyrinths (a grid of walls + posts you can actually wander/get lost in).
-    for (let m = 0; m < 2; m++) this._addLabyrinth(R, box, stone, stoneDark, place, addItem);
+    for (let m = 0; m < 1; m++) this._addLabyrinth(R, box, stone, stoneDark, place, addItem);
   }
 
   _addLabyrinth(R, box, stone, stoneDark, place, addItem) {
@@ -964,7 +964,7 @@ export class PastelWorld {
     const geo = new THREE.SphereGeometry(1.2, 16, 12);
     this._track(geo);
     const R = 200;
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 9; i++) {
       const hue = rand(0.05, 0.2) + (i % 3) * 0.0;
       const m = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(hue, 0.9, 0.7), transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending });
       this._disp.push(m);
@@ -1474,7 +1474,7 @@ export class PastelWorld {
 
     // Bass heave + moonlit rim on the terrain shader (more rim at deep night).
     if (this._terrainShader) {
-      this._terrainShader.uniforms.uHeave.value = ((bands.sub || 0) * 0.8 + beat * 0.4) * fm;
+      this._terrainShader.uniforms.uHeave.value = ((bands.sub || 0) * 1.0 + bands.bass * 0.4 + beat * 0.5) * fm;
       this._terrainShader.uniforms.uHeaveTime.value = elapsed;
       this._terrainShader.uniforms.uRimStrength.value = 0.14 + night * 0.16;
     }
@@ -1495,7 +1495,7 @@ export class PastelWorld {
 
     // --- sun ---
     this.sunGroup.position.copy(cam).addScaledVector(this.sunDir, 420);
-    const sunPulse = 1 + bands.level * 0.3 + beat * 0.3 * fm;
+    const sunPulse = 1 + bands.level * 0.3 + bands.bass * 0.5 + beat * 0.3 * fm;
     this.sunGroup.scale.setScalar(sunPulse);
     this.sunGlow.opacity = 0.25 + bands.mid * 0.35 + beat * 0.25 * fm;
     this.sunMat.color.setHSL((0.12 - bands.bass * 0.06 + 1) % 1, 0.6, 0.85 + beat * 0.1 * fm);
@@ -1514,7 +1514,7 @@ export class PastelWorld {
     this.water.position.set(cam.x, WATER_LEVEL, cam.z);
     this.waterMat.uniforms.time.value = elapsed;
     this.waterMat.uniforms.cam.value.copy(cam);
-    this.waterMat.uniforms.glow.value = bands.level * 0.25 + beat * 0.2 * fm;
+    this.waterMat.uniforms.glow.value = bands.level * 0.25 + bands.bass * 0.3 + beat * 0.2 * fm;
     this.waterMat.uniforms.shallow.value.copy(arc.waterSh); // day/night water tint
     this.waterMat.uniforms.deep.value.copy(arc.waterDp);
     this.waterMat.uniforms.moonDir.value.copy(this.sunDir); // moonglade points at the moon
@@ -1531,7 +1531,7 @@ export class PastelWorld {
     // --- particles ---
     const p = this.particles.geometry.attributes.position, pa = p.array, half = this.spread / 2;
     for (let i = 0; i < p.count; i++) {
-      pa[3 * i + 1] += (0.5 + bands.treble * 6 + beat * 4 * fm) * dt;
+      pa[3 * i + 1] += (0.5 + bands.bass * 4 + bands.treble * 6 + beat * 4 * fm) * dt;
       if (pa[3 * i + 1] > 70) pa[3 * i + 1] = 0;
       let dx = pa[3 * i] - cam.x, dz = pa[3 * i + 2] - cam.z;
       if (dx > half) pa[3 * i] -= this.spread; else if (dx < -half) pa[3 * i] += this.spread;
@@ -1574,11 +1574,12 @@ export class PastelWorld {
       if (it.kind === "crystal") {
         it.mat.emissiveIntensity = 0.4 + bands.bass * 1.8 + beat * 1.4 * fm;
         o.rotation.y += dt * (0.5 + beat * 3 * fm);
-        o.position.y = it.groundY + 0.6 + beat * 0.6 * fm;
+        o.position.y = it.groundY + 0.6 + bands.bass * 0.5 + beat * 0.6 * fm;
+        o.scale.copy(it.baseScale).multiplyScalar(1 + bands.bass * 0.5 + beat * 0.35 * fm); // pulse with the bass
       } else if (it.kind === "orb") {
         const bob = Math.sin(elapsed * 1.2 + it.phase) * 0.5;
         o.position.y = it.groundY + it.float + bob + beat * 0.8 * fm;
-        o.scale.setScalar(it.base * (1 + bands.treble * 0.8 + beat * 0.6 * fm));
+        o.scale.setScalar(it.base * (1 + bands.bass * 0.6 + bands.treble * 0.8 + beat * 0.6 * fm));
         it.mat.color.setHSL((it.hue + elapsed * 0.03) % 1, 0.85, 0.6 + bands.level * 0.25);
         it.mat.opacity = 0.7 + bands.level * 0.3;
       } else {
