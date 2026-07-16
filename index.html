@@ -29,8 +29,9 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 1.5rem;
+        justify-content: flex-start;
+        gap: 1.05rem;
+        padding: 4vh 1rem 3vh;
         text-align: center;
         z-index: 10;
         cursor: pointer;
@@ -103,11 +104,11 @@
       #overlay:hover .start-btn { background: rgba(255,255,255,0.16); transform: scale(1.04); }
       /* Live 3D portrait of the sage on the start screen. */
       #wizardPreview {
-        width: 190px; height: 230px; margin: 0.2rem 0 -0.4rem; display: block;
+        width: 132px; height: 160px; margin: 0.1rem 0 -0.3rem; display: block;
         filter: drop-shadow(0 12px 30px rgba(0,0,0,0.45));
         -webkit-user-select: none; user-select: none; pointer-events: none;
       }
-      @media (max-width: 700px) { #wizardPreview { width: 150px; height: 185px; } }
+      @media (max-width: 700px) { #wizardPreview { width: 104px; height: 128px; } }
 
       .file-row { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
       .file-row label { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.05em; }
@@ -436,7 +437,11 @@
       <div class="tagline">an endless walk through sound</div>
       <canvas id="wizardPreview" aria-label="the sage-traveler"></canvas>
       <div id="mobileNote">📱 Touch controls: <b>left thumb</b> — walk (a joystick appears under it) &nbsp;·&nbsp; <b>drag right side</b> — look around &nbsp;·&nbsp; <b>↥</b> — jump. Headphones recommended.</div>
-      <p>A goalless wander through a moonlit world that breathes with the music. No objective. Just walk.</p>
+      <div class="start-btn">Start your journey</div>
+      <div id="mixSection" class="mix-section" onclick="event.stopPropagation()">
+        <div class="mix-label">Or load a Supervuoto mix</div>
+        <div id="mixList" class="mix-list"></div>
+      </div>
       <div id="startControls">
         <span class="ctl"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span>
         <span class="ctl"><kbd>mouse</kbd> look</span>
@@ -445,11 +450,6 @@
         <span class="ctl"><kbd>V</kbd> view</span>
         <span class="ctl"><kbd>1</kbd><kbd>2</kbd> worlds</span>
         <span class="ctl"><kbd>P</kbd> photo</span>
-      </div>
-      <div class="start-btn">Start your journey</div>
-      <div id="mixSection" class="mix-section" onclick="event.stopPropagation()">
-        <div class="mix-label">Or load a Supervuoto mix</div>
-        <div id="mixList" class="mix-list"></div>
       </div>
       <div class="file-row" id="fileRow" onclick="event.stopPropagation()">
         <label for="trackInput">Optional: load your own track (mp3 / ogg / wav)</label>

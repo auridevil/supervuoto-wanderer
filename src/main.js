@@ -634,7 +634,10 @@ async function loadMixList() {
     const items = [];
     const re = /\[([^\]]+)\]\(([^)]+)\)/g;
     let m;
-    while ((m = re.exec(text))) items.push({ title: m[1].trim(), url: m[2].trim() });
+    while ((m = re.exec(text))) {
+      const url = m[2].trim();
+      if (/^https?:\/\//i.test(url)) items.push({ title: m[1].trim(), url }); // real links only (skips the example)
+    }
     if (!items.length) { if (mixSection) mixSection.style.display = "none"; return; }
     for (const it of items) {
       const el = document.createElement("button");
