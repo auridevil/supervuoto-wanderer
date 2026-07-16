@@ -475,11 +475,15 @@ const trackParam = (() => {
 })();
 const trackUrl = resolveTrackUrl(trackParam);
 const trackIsDrive = /google\.com/.test(trackParam || "") || /^[A-Za-z0-9_-]{25,}$/.test((trackParam || "").trim());
+// The track start() will load: a picked mix or ?track= overrides the default.
+let chosenUrl = trackUrl;
+let chosenIsDrive = trackIsDrive;
 
-// A URL mix is already the track — hide the "load your own track" picker.
+// A URL mix is already the track — hide the pickers.
 if (trackUrl) {
   document.getElementById("fileRow")?.style.setProperty("display", "none");
   document.getElementById("padNote")?.style.setProperty("display", "none");
+  document.getElementById("mixSection")?.style.setProperty("display", "none");
 }
 
 // Try reactive (CORS) first; fall back to play-only (no CORS, no analysis);
@@ -574,11 +578,11 @@ async function start() {
       // A user-picked local file is same-origin (object URL) — always reactive.
       revealUI();
       await audio.playFile(pendingFile);
-    } else if (trackUrl) {
-      // ?track= / ?gdrive= — show a loader while the mix downloads, then start
+    } else if (chosenUrl) {
+      // A picked mix or ?track= — show a loader while it downloads, then start
       // the world only once the file is ready.
       showLoader();
-      const mode = await loadTrackWithProgress(trackUrl, setLoaderProgress);
+      const mode = await loadTrackWithProgress(chosenUrl, setLoaderProgress);
       hideLoader();
       revealUI();
       if (mode === "playonly") {
@@ -586,7 +590,7 @@ async function start() {
       } else if (!mode) {
         audio.startPlaceholder();
         flashWorldName(
-          trackIsDrive
+          chosenIsDrive
             ? "google drive blocks in-browser playback — host the mix on dropbox / s3 instead"
             : "couldn't load that track — playing the ambient pad",
           7000
@@ -612,6 +616,42 @@ async function start() {
 }
 
 overlay.addEventListener("click", start);
+
+// ---- mixes menu (from public/mixes.md — "- [Title](url)" per line) ----
+const mixListEl = document.getElementById("mixList");
+const mixSection = document.getElementById("mixSection");
+function chooseMix(url) {
+  chosenUrl = resolveTrackUrl(url);
+  chosenIsDrive = false;
+  start(); // still inside the click gesture, so audio unlocks
+}
+async function loadMixList() {
+  if (!mixListEl || trackUrl) return; // ?track= preselects a track; skip the menu
+  try {
+    const res = await fetch("mixes.md", { cache: "no-cache" });
+    if (!res.ok) throw new Error("http " + res.status);
+    const text = await res.text();
+    const items = [];
+    const re = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let m;
+    while ((m = re.exec(text))) items.push({ title: m[1].trim(), url: m[2].trim() });
+    if (!items.length) { if (mixSection) mixSection.style.display = "none"; return; }
+    for (const it of items) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "mix-item";
+      const play = document.createElement("span"); play.className = "mix-play"; play.textContent = "▶";
+      const label = document.createElement("span"); label.textContent = it.title;
+      el.append(play, label);
+      el.addEventListener("click", (e) => { e.stopPropagation(); chooseMix(it.url); });
+      mixListEl.appendChild(el);
+    }
+  } catch (err) {
+    console.warn("Mix list load failed:", err);
+    if (mixSection) mixSection.style.display = "none";
+  }
+}
+loadMixList();
 
 // ---- demo / attract mode ----
 // The sage autopilots onto the waveform line and walks it forever, in third

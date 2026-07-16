@@ -128,6 +128,19 @@
       }
       #startControls .ctl kbd { font-size: 0.72rem; }
 
+      /* Mixes menu (populated from public/mixes.md). */
+      .mix-section { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-top: 0.2rem; width: 100%; }
+      .mix-label { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.05em; }
+      .mix-list { display: flex; flex-direction: column; gap: 0.4rem; width: min(32rem, 86vw); max-height: 26vh; overflow-y: auto; }
+      .mix-item {
+        cursor: pointer; text-align: left; font-family: inherit; color: var(--fg);
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 10px; padding: 0.55rem 0.9rem; font-size: 0.85rem; letter-spacing: 0.02em;
+        display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s, transform 0.15s;
+      }
+      .mix-item:hover { background: rgba(255,255,255,0.14); transform: translateY(-1px); }
+      .mix-item .mix-play { opacity: 0.65; font-size: 0.75rem; }
+
       /* Loader — shown while a ?track= mix downloads; hides when ready. */
       #loader {
         inset: 0; z-index: 11; display: none;
@@ -434,6 +447,10 @@
         <span class="ctl"><kbd>P</kbd> photo</span>
       </div>
       <div class="start-btn">Start your journey</div>
+      <div id="mixSection" class="mix-section" onclick="event.stopPropagation()">
+        <div class="mix-label">Or load a Supervuoto mix</div>
+        <div id="mixList" class="mix-list"></div>
+      </div>
       <div class="file-row" id="fileRow" onclick="event.stopPropagation()">
         <label for="trackInput">Optional: load your own track (mp3 / ogg / wav)</label>
         <input id="trackInput" type="file" accept="audio/*" />
