@@ -58,7 +58,7 @@ const journey = new Journey(scene);
 // that the analyser hears — so the world reacts to your own collecting.
 function onRingCollected() {
   journey.collectRing();
-  audio.chime(journey.rings - 1);
+  if (!recordingActive) audio.chime(journey.rings - 1); // silent while recording (see beginRecording)
 }
 
 // A waystone/monolith kindled on approach — toast + a running tally in the top bar.
