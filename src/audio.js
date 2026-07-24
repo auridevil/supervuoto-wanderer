@@ -44,6 +44,20 @@ export class AudioEngine {
     if (this.ctx.state === "suspended") await this.ctx.resume();
   }
 
+  // Tap the master bus into a MediaStream for recording — captures the track
+  // plus any world sounds (chimes/bells), already in sync with what you hear.
+  // Cached, so calling it more than once is safe. Only carries audio that goes
+  // through the Web Audio graph (the analysed path); a play-only fallback that
+  // routes straight from the <audio> element won't appear here.
+  captureAudioStream() {
+    this._ensureCtx();
+    if (!this._recDest) {
+      this._recDest = this.ctx.createMediaStreamDestination();
+      this.master.connect(this._recDest);
+    }
+    return this._recDest.stream;
+  }
+
   // iOS/Safari only start an AudioContext from inside a user gesture, and — the
   // big one — route Web Audio to the *ringer* channel, which the hardware
   // silent switch mutes. Keeping a silent HTMLAudioElement looping flips iOS

@@ -76,6 +76,38 @@ The audio is analysed live: **bass** drives terrain motion / shape pulsing,
 **mids** drive sky & fog color, **treble** drives particles & glow, and detected
 **beats** flash the lighting.
 
+## Recording a video (YouTube-ready mp4)
+
+Capture the autopilot "walk the line" demo, in sync with a track, straight from
+the browser:
+
+1. Load with **`?record=1`** and a track — e.g.
+   `http://localhost:5173/?record=1&track=https://host/mix.mp3`, or drop your
+   file in `public/music.mp3` and open `?record=1`.
+2. Click **enter**. The chrome hides, the sage walks the line, and capture
+   starts automatically. Leave the tab focused and in the foreground.
+3. When the track ends, a **`.webm`** downloads (canvas video + the exact track
+   audio, already in sync). The output resolution follows your window size, so
+   size the window to what you want (e.g. a 1920×1080 window ≈ 1080p).
+
+Then convert the `.webm` to an H.264/AAC `.mp4` YouTube accepts:
+
+```bash
+ffmpeg -i supervuoto-walk-*.webm \
+  -c:v libx264 -pix_fmt yuv420p -crf 18 -preset slow \
+  -c:a aac -b:a 320k -movflags +faststart \
+  walk.mp4
+```
+
+Notes:
+- Capture runs in **real time** — a 4-minute track takes 4 minutes.
+- Audio is captured only on the **reactive (analysed) path** — a local file, a
+  same-origin `public/` track, or a CORS mix (see below). A play-only fallback
+  (non-CORS host) plays but won't be captured; use a local file instead.
+- Keep the tab in the foreground; background tabs throttle the render loop.
+- Need to stop a take early? Run `stopWalkRecording()` in the devtools console —
+  it saves what's captured so far.
+
 ## Structure
 
 - `src/main.js` — renderer, loop, world switching, start flow

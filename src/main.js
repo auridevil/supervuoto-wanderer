@@ -15,6 +15,7 @@ import { Wayfinding } from "./wayfinding.js";
 import { Journey } from "./journey.js";
 import { randomHaiku } from "./haiku.js";
 import { startWizardPreview } from "./preview.js";
+import { CanvasRecorder } from "./recorder.js";
 
 const app = document.getElementById("app");
 
@@ -613,6 +614,7 @@ async function start() {
   controls.lock();
   journey.begin();
   if (demoParam) setDemo(true); // demo/attract by default (see demoParam)
+  if (recordParam) beginRecording(); // capture the walk to a .webm (see recorder.js)
 }
 
 overlay.addEventListener("click", start);
@@ -676,6 +678,50 @@ function setDemo(on) {
     flashWorldName("Autopilot off — you have the control of your life", 2200);
   }
 }
+
+// ---- recording (?record=1) ----
+// Capture the autopilot walk to a .webm (canvas video + the exact track audio,
+// in sync) and download it when the track ends. Convert to mp4 via the README's
+// ffmpeg command. Resolution follows the current window; render scale is pinned
+// so the output stays one constant size (mp4 encoders dislike mid-stream jumps).
+const recordParam = (() => {
+  try { const v = new URLSearchParams(location.search).get("record"); return v === "1" || v === "true"; }
+  catch { return false; }
+})();
+const recorder = new CanvasRecorder(renderer.domElement, audio);
+let recordingActive = false;
+
+function beginRecording() {
+  if (recordingActive) return;
+  if (!CanvasRecorder.supported()) {
+    flashWorldName("recording isn't supported in this browser", 4000);
+    return;
+  }
+  setDemo(true);                          // capture the autopilot walk
+  perfScale = 1; setRenderScale(1);       // constant resolution -> clean mp4
+  document.body.classList.add("recording"); // hide HUD/chrome (see CSS)
+  recordingActive = true;
+  recorder.start({ fps: 60 });
+  console.info("[record] capturing — will save when the track ends");
+
+  // Save at the natural end of the track: play it once (no loop) and stop.
+  const el = audio.audioEl;
+  if (el) {
+    el.loop = false;
+    el.addEventListener("ended", stopRecording, { once: true });
+  } else {
+    console.warn("[record] no track element — audio won't be captured; reload without ?record=1 or load an mp3");
+  }
+}
+function stopRecording() {
+  if (!recordingActive) return;
+  recordingActive = false;
+  recorder.stop();
+  document.body.classList.remove("recording");
+  flashWorldName("recording saved — see the README to make it an mp4", 5000);
+}
+// Safety hatch: Esc-less manual stop from the console if you cut a take short.
+window.stopWalkRecording = stopRecording;
 
 // Re-lock the pointer on click after Esc.
 renderer.domElement.addEventListener("click", () => {
@@ -789,7 +835,7 @@ function animate() {
   // FPS auto-scaler (evaluated every ~1.5s to avoid thrash).
   if (dt > 0.0001) fpsEMA += (1 / dt - fpsEMA) * 0.05;
   _scaleAcc += dt;
-  if (_scaleAcc > 1.5) {
+  if (!recordingActive && _scaleAcc > 1.5) { // frozen during capture -> constant resolution + look
     _scaleAcc = 0;
     let ns = perfScale;
     if (fpsEMA < 45 && perfScale > 0.6) ns = Math.max(0.6, perfScale - 0.1);

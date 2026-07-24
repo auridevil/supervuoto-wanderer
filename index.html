@@ -271,6 +271,17 @@
       body.photo #stats,
       body.photo #worldName { display: none !important; }
 
+      /* Recording (?record=1) — hide every scrap of chrome so only the world is
+         in frame for the captured video (photo mode's clean look, minus the
+         capture bar, since the recorder runs unattended). */
+      body.recording #hud,
+      body.recording #panel,
+      body.recording #reticle,
+      body.recording #wayfind,
+      body.recording #stats,
+      body.recording #worldName,
+      body.recording #touchButtons { display: none !important; }
+
       /* Rest — a contemplative hush: fade the chrome, letterbox in, a haiku drifts
          up, the sky time-lapses. Any movement rises you again. */
       body.rest #hud,
