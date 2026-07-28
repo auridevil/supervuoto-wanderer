@@ -111,6 +111,27 @@ Notes:
 - Need to stop a take early? Run `stopWalkRecording()` in the devtools console —
   it saves what's captured so far.
 
+### From the command line (headless)
+
+To render a file without babysitting a browser tab, use the CLI — it drives the
+same `?record=1` pipeline inside headless Chrome, then transcodes to mp4:
+
+```bash
+npm run render -- path/to/mix.mp3 out.mp4            # whole track (real time)
+npm run render -- path/to/mix.mp3 sample.mp4 --seconds 30   # a 30s sample first
+```
+
+Options: `--seconds N` (cap length — great for a test sample), `--width` /
+`--height` (default `1920`×`1080`), `--fps` (default 60), `--crf N` (x264
+quality, lower = better, default 18), `--keep-webm`, `--headful` (watch the
+browser), `--no-build`. It builds `dist/` on first run and serves the audio
+same-origin so the reactive/analysed path always works.
+
+Caveats: it's still **real time** (a 1h mix takes ~1h), needs `ffmpeg` on PATH,
+and downloads a bundled Chromium via `puppeteer` (a dev dependency). Render
+quality depends on headless Chrome's WebGL on your machine — start with a short
+`--seconds` sample to confirm it looks right.
+
 ## Structure
 
 - `src/main.js` — renderer, loop, world switching, start flow
