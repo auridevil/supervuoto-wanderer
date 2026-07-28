@@ -104,7 +104,10 @@ Notes:
 - Audio is captured only on the **reactive (analysed) path** — a local file, a
   same-origin `public/` track, or a CORS mix (see below). A play-only fallback
   (non-CORS host) plays but won't be captured; use a local file instead.
-- Keep the tab in the foreground; background tabs throttle the render loop.
+- You can switch tabs / cover the window while it records — a Web Worker keeps
+  the render loop alive, so the video won't freeze the way a normal
+  requestAnimationFrame loop would when backgrounded. (Leaving it foreground is
+  still the safest bet, and don't let the machine sleep.)
 - Need to stop a take early? Run `stopWalkRecording()` in the devtools console —
   it saves what's captured so far.
 

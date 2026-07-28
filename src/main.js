@@ -701,6 +701,9 @@ function beginRecording() {
   perfScale = 1; setRenderScale(1);       // constant resolution -> clean mp4
   document.body.classList.add("recording"); // hide HUD/chrome (see CSS)
   recordingActive = true;
+  // Drive the render loop from the worker ticker so capture keeps rendering even
+  // if the tab is backgrounded / the window is covered (rAF would freeze then).
+  if (_tickerWorker) { cancelAnimationFrame(rafId); rafId = 0; _tickerWorker.postMessage({ hz: 60 }); }
   recorder.start({ fps: 60 });
   console.info("[record] capturing — will save when the track ends");
 
@@ -717,6 +720,9 @@ function stopRecording() {
   if (!recordingActive) return;
   recordingActive = false;
   recorder.stop();
+  // Hand the loop back to requestAnimationFrame.
+  if (_tickerWorker) _tickerWorker.postMessage({ stop: true });
+  if (!rafId) animate();
   document.body.classList.remove("recording");
   flashWorldName("recording saved — see the README to make it an mp4", 5000);
 }
@@ -827,8 +833,17 @@ function setRenderScale(s) {
   syncResolution();
 }
 
+let rafId = 0;
 function animate() {
-  requestAnimationFrame(animate);
+  rafId = requestAnimationFrame(animate);
+  frame();
+}
+// One step of the world. Normally driven by requestAnimationFrame (animate),
+// but during recording a Web Worker ticker calls this directly — rAF is
+// throttled to a near-stop when the tab is backgrounded or the window is
+// covered, which would freeze the captured video while the (independent) audio
+// kept playing. Worker timers aren't throttled, so the picture keeps rendering.
+function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
 
@@ -888,5 +903,20 @@ function animate() {
 
   lofiPass.uniforms.time.value = elapsed;
   composer.render();
+  if (recordingActive) recorder.pushFrame(); // force the just-rendered frame into the capture
 }
+
+// Worker ticker used only while recording (see frame()). It just posts a tick
+// every ~1000/hz ms; the main thread renders on each, immune to background-tab
+// rAF throttling. Inline blob so there's no extra file to bundle.
+const _tickerWorker = (() => {
+  try {
+    const src = "let id=0;onmessage=function(e){clearInterval(id);id=0;" +
+      "if(e.data&&e.data.hz){id=setInterval(function(){postMessage(1);},Math.max(4,1000/e.data.hz));}};";
+    const w = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    w.onmessage = () => { if (recordingActive) frame(); };
+    return w;
+  } catch { return null; }
+})();
+
 animate();

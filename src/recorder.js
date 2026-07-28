@@ -39,7 +39,20 @@ export class CanvasRecorder {
   start({ fps = 60, bitrate = 12_000_000 } = {}) {
     if (this.recording || !CanvasRecorder.supported()) return false;
 
-    const video = this.canvas.captureStream(fps);
+    // Prefer manual frame-pushing (captureStream(0) + requestFrame after each
+    // render): the browser's automatic frame grabber can pause for a hidden or
+    // covered tab, freezing the video. requestFrame lets us force every frame
+    // ourselves, so capture survives backgrounding. Fall back to auto-capture
+    // where requestFrame isn't supported (e.g. Safari).
+    let video = this.canvas.captureStream(0);
+    this.videoTrack = video.getVideoTracks()[0];
+    this.manual = !!(this.videoTrack && typeof this.videoTrack.requestFrame === "function");
+    if (!this.manual) {
+      video.getTracks().forEach((t) => t.stop());
+      video = this.canvas.captureStream(fps);
+      this.videoTrack = video.getVideoTracks()[0];
+    }
+
     const stream = new MediaStream(video.getVideoTracks());
     const audioStream = this.audio.captureAudioStream && this.audio.captureAudioStream();
     if (audioStream) for (const t of audioStream.getAudioTracks()) stream.addTrack(t);
@@ -55,6 +68,14 @@ export class CanvasRecorder {
     this.rec.start(1000); // 1s timeslices — resilient if the tab dies mid-capture
     this.recording = true;
     return true;
+  }
+
+  // Force one captured frame — call right after each render while recording.
+  // No-op in the auto-capture fallback (frames flow on their own there).
+  pushFrame() {
+    if (this.recording && this.manual && this.videoTrack) {
+      try { this.videoTrack.requestFrame(); } catch { /* track ended */ }
+    }
   }
 
   stop() {
