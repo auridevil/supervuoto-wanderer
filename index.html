@@ -598,5 +598,27 @@
     </div>
 
     <script type="module" src="/src/main.js"></script>
+
+    <!-- analytics: GoatCounter, same site as supervuoto.org (privacy-friendly,
+         no cookies). Visits land under this host's path (/supervuoto-wanderer/).
+         Counting is manual so ?record=1 capture runs aren't counted. -->
+    <script
+      data-goatcounter="https://supervuoto.goatcounter.com/count"
+      data-goatcounter-settings='{"no_onload": true}'
+      async
+      src="//gc.zgo.at/count.js"
+    ></script>
+    <script>
+      addEventListener('load', function () {
+        if (new URLSearchParams(location.search).has('record')) return;
+        (function count() {
+          if (window.goatcounter && window.goatcounter.count) {
+            window.goatcounter.count({ path: location.pathname });
+          } else {
+            setTimeout(count, 200);
+          }
+        })();
+      });
+    </script>
   </body>
 </html>
